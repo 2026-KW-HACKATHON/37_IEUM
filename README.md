@@ -1,57 +1,16 @@
-# 월계 이음 (IEUM)
+# React + Vite
 
-> 대학생과 어르신을 생활 도움으로 연결하는 지역 기반 봉사 매칭 서비스
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
----
+Currently, two official plugins are available:
 
-## 프로젝트 개요
-- **배경:** 지역 내 세대 간 접점 부족으로 인한 어르신의 일상 돌봄 공백과 대학생의 봉사 참여·관리 번거로움 해결
-- **목적:** 장보기, 병원 동행, 말벗 등 일상 도움이 필요할 때 지역 내 대학생과 빠르게 매칭하고 활동 시간을 효율적으로 기록
-- **시범 운영 대상:** 서울특별시 노원구 월계1동 주민 및 인근 대학생
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
----
+## React Compiler
 
-## 주요 기능
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-### 1. 어르신 / 가족 대리인
-- **도움 요청:** 위치, 희망 시간, 도움 내용(장보기, 병원 동행, 말벗 등) 입력
-- **접근성 보완:** 디지털 기기 사용이 어려운 어르신을 위해 가족 대리 신청 및 지자체 복지관 연계 지원
+## Expanding the ESLint configuration
 
-### 2. 대학생 (활동자)
-- **신원 검증:** 에브리타임 및 학적 인증을 거친 인원만 참여
-- **위치 기반 탐색:** 지도에서 가까운 도움 요청 내역 확인 후 수락
-
-### 3. 안전 및 활동 검증
-- **GPS 체크인·체크아웃:** 현장 도착 및 활동 종료 시 시공간 기록 자동 저장
-- **매니패스트 기반 검증:** [GPS 좌표 + 시각 데이터 + 현장 사진] 3중 대조를 통한 실적 점수화
-- **실적 인증:** 1365 자원봉사 포털 연동 및 대학 제출용 공식 인증서 발급
-- **지역 불편 제보:** 활동 이동 중 발견한 도로 결빙, 가로등 고장 등 공공 행정 제보 기능
-
----
-
-## 서비스 이용 흐름
-1. **도움 요청 등록** (위치, 시간, 내용 입력)
-2. **인근 요청 탐색** (대학생 위치 기반 확인)
-3. **요청 수락 및 매칭**
-4. **현장 GPS 체크인**
-5. **활동 수행 및 GPS 체크아웃**
-6. **매니패스트 사진 업로드 및 후기 작성**
-7. **3중 대조 검증 후 봉사시간 기록**
-
----
-
-## 기술 스택
-*(구현 범위 확정 후 업데이트 예정)*
-- **Frontend:** TBD
-- **Backend:** TBD
-- **Database:** TBD
-
----
-
-## 진행 상황 및 로드맵
-- [x] 아이디어 구체화 및 PRD 작성 (기능 명세, 유저플로우, 와이어프레임)
-- [ ] 핵심 기능 구현 (로그인, 사용자 구분, 도움 요청/수락/매칭)
-- [ ] 활동시간 기록 기능 구현 (GPS 체크인/체크아웃)
-- [ ] 후기 및 안전 기능 구현 (매니패스트 사진 업로드, 신고/평가)
-- [ ] 예외 상황 처리 및 개인정보 보호 기준 수립
-- [ ] 월계1동 소규모 시범 운영 및 피드백 반영
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

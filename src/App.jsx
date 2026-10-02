@@ -72,6 +72,26 @@ export default function App() {
   const [requesterReview, setRequesterReview] = useState("");
   const [requestCompleted, setRequestCompleted] = useState(false);
 
+  // 신청자 / 매칭
+  const [matchedStudent, setMatchedStudent] = useState(null);
+
+  // 현재는 프론트 시연용 데이터
+  // 실제 서비스에서는 대학생 신청 데이터를 서버에서 받아오면 됨
+  const applicants = [
+    {
+      id: 1,
+      name: "김지수",
+      school: "한국대",
+      activity: "누적 봉사 12시간"
+    },
+    {
+      id: 2,
+      name: "이민준",
+      school: "광운대",
+      activity: "누적 봉사 8시간"
+    }
+  ];
+
   const handleCreateTask = (e) => {
     e.preventDefault();
 
@@ -145,6 +165,7 @@ export default function App() {
                   setPage('role');
                   return;
                 }
+
                 setPage(role === 'student' ? 'student_home' : 'elder_home');
               }}
               style={{ border: 'none', background: 'none', cursor: 'pointer' }}
@@ -162,6 +183,7 @@ export default function App() {
               {page === 'progress' && '활동 진행 중'}
               {page === 'complete' && '활동 완료 확인'}
               {page === 'review' && '후기 작성'}
+              {page === 'applicants' && '신청자 확인'}
               {page === 'requester_complete' && '활동 완료 확인'}
               {page === 'requester_review' && '활동자 평가'}
               {page === 'create_task' && '도움 의뢰 등록'}
@@ -176,8 +198,15 @@ export default function App() {
 
           {/* 역할 선택 */}
           {page === 'role' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'center', paddingTop: '40px' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+              textAlign: 'center',
+              paddingTop: '40px'
+            }}>
               <h1 style={{ fontSize: '22px', margin: 0 }}>이음</h1>
+
               <p style={{ color: '#5f5b57', fontSize: '13px' }}>
                 세대를 잇는 월계1동 지역 돌봄
               </p>
@@ -197,6 +226,7 @@ export default function App() {
                 onClick={() => {
                   setRole('elder');
                   setRequestCompleted(false);
+                  setMatchedStudent(null);
                   setPage('elder_home');
                 }}
               />
@@ -210,6 +240,7 @@ export default function App() {
                   setCodeSent(false);
                   setVerificationCode("");
                   setRequestCompleted(false);
+                  setMatchedStudent(null);
                   setPage('family_auth');
                 }}
               />
@@ -226,6 +257,7 @@ export default function App() {
               </p>
 
               <label style={labelStyle}>학교 이메일 (@ac.kr)</label>
+
               <input
                 style={inputStyle}
                 defaultValue="student@kw.ac.kr"
@@ -317,7 +349,9 @@ export default function App() {
                   maxLength="6"
                   value={verificationCode}
                   onChange={(e) =>
-                    setVerificationCode(e.target.value.replace(/[^0-9]/g, ''))
+                    setVerificationCode(
+                      e.target.value.replace(/[^0-9]/g, '')
+                    )
                   }
                   style={inputStyle}
                 />
@@ -374,6 +408,7 @@ export default function App() {
 
               <div style={card}>
                 <strong>장보기 동행</strong>
+
                 <div style={description}>
                   오늘 14:00 · 월계1동 주민센터 앞
                 </div>
@@ -603,38 +638,148 @@ export default function App() {
                   <strong>장보기 도움 의뢰</strong>
 
                   <strong style={{
-                    color: requestCompleted ? '#2563EB' : '#10B981'
+                    color: requestCompleted
+                      ? '#2563EB'
+                      : matchedStudent
+                      ? '#10B981'
+                      : '#E67E22'
                   }}>
-                    {requestCompleted ? '활동 완료' : '매칭 완료'}
+                    {requestCompleted
+                      ? '활동 완료'
+                      : matchedStudent
+                      ? '매칭 완료'
+                      : `신청자 ${applicants.length}명`}
                   </strong>
                 </div>
 
-                <div style={{ ...description, marginTop: '5px' }}>
-                  활동자: 김지수 (한국대)
-                </div>
+                {!matchedStudent && !requestCompleted && (
+                  <>
+                    <div style={{
+                      ...description,
+                      marginTop: '5px'
+                    }}>
+                      대학생 활동자의 신청이 도착했습니다.
+                    </div>
 
-                {!requestCompleted ? (
-                  <button
-                    onClick={() => {
-                      setCompletionChecker(
-                        role === 'elder' ? '어르신' : ''
-                      );
-                      setPage('requester_complete');
-                    }}
-                    style={{ ...btnLight, marginTop: '10px' }}
-                  >
-                    활동 완료 확인
-                  </button>
-                ) : (
-                  <div style={{ marginTop: '8px', fontSize: '13px' }}>
-                    {'★'.repeat(requesterRating)}
-                    {'☆'.repeat(5 - requesterRating)}
-                    <div style={{ color: '#666', marginTop: '3px' }}>
+                    <button
+                      onClick={() => setPage('applicants')}
+                      style={{
+                        ...btnLight,
+                        marginTop: '10px'
+                      }}
+                    >
+                      신청자 확인
+                    </button>
+                  </>
+                )}
+
+                {matchedStudent && !requestCompleted && (
+                  <>
+                    <div style={{
+                      ...description,
+                      marginTop: '5px'
+                    }}>
+                      활동자: {matchedStudent.name} ({matchedStudent.school}) 매칭됨
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setCompletionChecker(
+                          role === 'elder'
+                            ? '김순자 어르신'
+                            : ''
+                        );
+
+                        setPage('requester_complete');
+                      }}
+                      style={{
+                        ...btnLight,
+                        marginTop: '10px'
+                      }}
+                    >
+                      활동 완료 확인
+                    </button>
+                  </>
+                )}
+
+                {requestCompleted && (
+                  <div style={{
+                    marginTop: '8px',
+                    fontSize: '13px'
+                  }}>
+                    <div>
+                      활동자: {matchedStudent?.name} ({matchedStudent?.school})
+                    </div>
+
+                    <div style={{ marginTop: '5px' }}>
+                      {'★'.repeat(requesterRating)}
+                      {'☆'.repeat(5 - requesterRating)}
+                    </div>
+
+                    <div style={{
+                      color: '#666',
+                      marginTop: '3px'
+                    }}>
                       {completionChecker} 확인 완료
                     </div>
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* 신청자 확인 */}
+          {page === 'applicants' && (
+            <div style={column}>
+              <h2 style={title}>신청자 확인</h2>
+
+              <div style={infoBox}>
+                장보기 도움 의뢰에 {applicants.length}명의 대학생이 신청했습니다.
+              </div>
+
+              {applicants.map((student) => (
+                <div key={student.id} style={card}>
+                  <strong>{student.name}</strong>
+
+                  <div style={{
+                    ...description,
+                    marginTop: '5px'
+                  }}>
+                    {student.school}
+                  </div>
+
+                  <div style={{
+                    ...description,
+                    marginTop: '3px'
+                  }}>
+                    {student.activity}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const ok = window.confirm(
+                        `${student.name} 학생과 매칭하시겠습니까?`
+                      );
+
+                      if (!ok) return;
+
+                      setMatchedStudent(student);
+
+                      alert(
+                        `${student.name} 학생과 매칭되었습니다.`
+                      );
+
+                      setPage('elder_home');
+                    }}
+                    style={{
+                      ...btnDark,
+                      marginTop: '10px'
+                    }}
+                  >
+                    이 활동자 선택
+                  </button>
+                </div>
+              ))}
             </div>
           )}
 
@@ -644,18 +789,23 @@ export default function App() {
               <h2 style={title}>활동 완료 확인</h2>
 
               <div style={infoBox}>
-                김지수 활동자가 활동을 종료했습니다.<br />
+                {matchedStudent?.name} 활동자가 활동을 종료했습니다.<br />
                 장보기 동행 · 14:03 ~ 15:30
               </div>
 
               {role === 'family' && (
                 <>
-                  <div style={{ fontSize: '13px', fontWeight: '600' }}>
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: '600'
+                  }}>
                     누가 활동 완료를 확인하시나요?
                   </div>
 
                   <button
-                    onClick={() => setCompletionChecker(`가족 ${familyName}님`)}
+                    onClick={() =>
+                      setCompletionChecker(`가족 ${familyName}님`)
+                    }
                     style={{
                       ...btnLight,
                       background:
@@ -672,7 +822,9 @@ export default function App() {
                   </button>
 
                   <button
-                    onClick={() => setCompletionChecker(`${elderName} 어르신`)}
+                    onClick={() =>
+                      setCompletionChecker(`${elderName} 어르신`)
+                    }
                     style={{
                       ...btnLight,
                       background:
@@ -719,7 +871,7 @@ export default function App() {
               <h2 style={title}>활동자 평가</h2>
 
               <div style={description}>
-                김지수 활동자의 활동은 어떠셨나요?
+                {matchedStudent?.name} 활동자의 활동은 어떠셨나요?
               </div>
 
               <div style={{
@@ -754,9 +906,14 @@ export default function App() {
 
               <textarea
                 value={requesterReview}
-                onChange={(e) => setRequesterReview(e.target.value)}
+                onChange={(e) =>
+                  setRequesterReview(e.target.value)
+                }
                 placeholder="후기를 남겨주세요. (선택)"
-                style={{ ...inputStyle, height: '100px' }}
+                style={{
+                  ...inputStyle,
+                  height: '100px'
+                }}
               />
 
               <button
@@ -778,8 +935,13 @@ export default function App() {
 
           {/* 도움 의뢰 등록 */}
           {page === 'create_task' && (
-            <form onSubmit={handleCreateTask} style={column}>
-              <h2 style={title}>어떤 도움이 필요하신가요?</h2>
+            <form
+              onSubmit={handleCreateTask}
+              style={column}
+            >
+              <h2 style={title}>
+                어떤 도움이 필요하신가요?
+              </h2>
 
               <div style={infoBox}>
                 {role === 'family'
@@ -791,7 +953,9 @@ export default function App() {
 
               <select
                 value={newTaskCategory}
-                onChange={(e) => setNewTaskCategory(e.target.value)}
+                onChange={(e) =>
+                  setNewTaskCategory(e.target.value)
+                }
                 style={inputStyle}
               >
                 <option>장보기</option>
@@ -804,20 +968,30 @@ export default function App() {
 
               <textarea
                 value={newTaskContent}
-                onChange={(e) => setNewTaskContent(e.target.value)}
+                onChange={(e) =>
+                  setNewTaskContent(e.target.value)
+                }
                 placeholder="필요한 도움을 입력해 주세요."
-                style={{ ...inputStyle, height: '80px' }}
+                style={{
+                  ...inputStyle,
+                  height: '80px'
+                }}
               />
 
               <label style={labelStyle}>만남 장소</label>
 
               <input
                 value={newTaskPlace}
-                onChange={(e) => setNewTaskPlace(e.target.value)}
+                onChange={(e) =>
+                  setNewTaskPlace(e.target.value)
+                }
                 style={inputStyle}
               />
 
-              <button type="submit" style={btnDark}>
+              <button
+                type="submit"
+                style={btnDark}
+              >
                 의뢰 등록 완료
               </button>
             </form>
@@ -836,7 +1010,11 @@ export default function App() {
           }}>
             <button
               onClick={() =>
-                setPage(role === 'student' ? 'student_home' : 'elder_home')
+                setPage(
+                  role === 'student'
+                    ? 'student_home'
+                    : 'elder_home'
+                )
               }
               style={tabBtn}
             >
@@ -851,7 +1029,9 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => alert('월계1동 주민센터 제보 탭입니다.')}
+              onClick={() =>
+                alert('월계1동 주민센터 제보 탭입니다.')
+              }
               style={tabBtn}
             >
               📍 제보
@@ -874,8 +1054,15 @@ function RoleCard({ title, text, onClick }) {
   return (
     <div style={card}>
       <strong>{title}</strong>
-      <p style={description}>{text}</p>
-      <button onClick={onClick} style={btnDark}>
+
+      <p style={description}>
+        {text}
+      </p>
+
+      <button
+        onClick={onClick}
+        style={btnDark}
+      >
         선택하기
       </button>
     </div>

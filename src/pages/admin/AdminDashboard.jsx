@@ -1,16 +1,21 @@
 import { useState } from "react";
 import { taskStatuses } from "../../data/tasks";
+import { reviewStatuses, getReviewActions } from "../../data/taskReview";
 
-function AdminDashboard({ tasks, onStatusChange, storageError }) {
+function AdminDashboard({ tasks, onStatusChange, onReviewChange, storageError }) {
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("전체");
   const [nextStatus, setNextStatus] = useState("");
   const [changeReason, setChangeReason] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
+  const [reviewFilter, setReviewFilter] = useState("전체");
+  const [reviewAction, setReviewAction] = useState("");
+  const [reviewReason, setReviewReason] = useState("");
 
   const filteredTasks = tasks.filter(
-    (task) => statusFilter === "전체" || task.status === statusFilter
+    (task) => (statusFilter === "전체" || task.status === statusFilter) &&
+      (reviewFilter === "전체" || (task.reviewStatus ?? "검토 대기") === reviewFilter)
   );
 
   function toggleDetails(task) {
@@ -19,6 +24,8 @@ function AdminDashboard({ tasks, onStatusChange, storageError }) {
     setChangeReason("");
     setSaveError("");
     setSaveMessage("");
+    setReviewAction("");
+    setReviewReason("");
   }
 
   function handleStatusSave(event, task) {
@@ -29,6 +36,21 @@ function AdminDashboard({ tasks, onStatusChange, storageError }) {
       onStatusChange(task.id, nextStatus, changeReason);
       setChangeReason("");
       setSaveMessage(`‘${task.title}’ 요청을 ‘${nextStatus}’ 상태로 저장했습니다.`);
+    } catch (error) {
+      setSaveError(error.message);
+    }
+  }
+
+  function handleReviewSave(event, task) {
+    event.preventDefault();
+    setSaveError("");
+    setSaveMessage("");
+    try {
+      onReviewChange(task.id, reviewAction, reviewReason);
+      if (reviewAction === "취소") setNextStatus("취소");
+      setSaveMessage(`‘${task.title}’ 요청의 ‘${reviewAction}’ 조치를 저장했습니다.`);
+      setReviewAction("");
+      setReviewReason("");
     } catch (error) {
       setSaveError(error.message);
     }
@@ -71,6 +93,22 @@ function AdminDashboard({ tasks, onStatusChange, storageError }) {
           <option key={status} value={status}>{status}</option>
         ))}
       </select>
+      <label htmlFor="task-review-filter"> 안전검토 상태 </label>
+      <select
+        id="task-review-filter"
+        value={reviewFilter}
+        onChange={(event) => {
+          setReviewFilter(event.target.value);
+          setSelectedTaskId(null);
+          setSaveError("");
+          setSaveMessage("");
+        }}
+      >
+        <option value="전체">전체</option>
+        {reviewStatuses.map((status) => (
+          <option key={status} value={status}>{status}</option>
+        ))}
+      </select>
       <p>조회 결과: {filteredTasks.length}건</p>
       {storageError && <p role="alert">{storageError}</p>}
       {saveError && <p role="alert">{saveError}</p>}
@@ -79,7 +117,7 @@ function AdminDashboard({ tasks, onStatusChange, storageError }) {
         <p>
           {tasks.length === 0
             ? "등록된 요청이 없습니다."
-            : "선택한 상태의 요청이 없습니다."}
+            : "선택한 조건의 요청이 없습니다."}
         </p>
       ) : (
         filteredTasks.map((task) => (
@@ -94,6 +132,8 @@ function AdminDashboard({ tasks, onStatusChange, storageError }) {
               <dd>{task.place}</dd>
               <dt>현재 상태</dt>
               <dd>{task.status}</dd>
+              <dt>안전검토 상태</dt>
+              <dd>{task.reviewStatus ?? "검토 대기"}</dd>
             </dl>
             <button
               type="button"
@@ -120,6 +160,64 @@ function AdminDashboard({ tasks, onStatusChange, storageError }) {
                 <dd>{task.volTime}</dd>
               </dl>
               <p>공식 1365 인증 여부는 확인이 필요합니다.</p>
+
+              <h4>의뢰 안전검토</h4>
+              <p>보류·숨김은 요청의 진행 상태와 별도로 관리합니다. 취소 조치는 요청 상태도 ‘취소’로 변경합니다.</p>
+              {task.status === "취소" ? (
+                <p>취소된 요청에는 추가 안전검토 조치를 적용할 수 없습니다.</p>
+              ) : (
+                <form onSubmit={(event) => handleReviewSave(event, task)}>
+                  <label htmlFor={`task-review-action-${task.id}`}>안전검토 조치 </label>
+                  <select
+                    id={`task-review-action-${task.id}`}
+                    value={selectedTaskId === task.id ? reviewAction : ""}
+                    onChange={(event) => {
+                      setReviewAction(event.target.value);
+                      setSaveError("");
+                      setSaveMessage("");
+                    }}
+                    required
+                    disabled={Boolean(storageError)}
+                  >
+                    <option value="">조치를 선택해주세요</option>
+                    {getReviewActions(task).map((action) => (
+                      <option key={action} value={action}>{action}</option>
+                    ))}
+                  </select>
+                  <div>
+                    <label htmlFor={`task-review-reason-${task.id}`}>조치 사유 </label>
+                    <textarea
+                      id={`task-review-reason-${task.id}`}
+                      value={selectedTaskId === task.id ? reviewReason : ""}
+                      onChange={(event) => setReviewReason(event.target.value)}
+                      required
+                      disabled={Boolean(storageError)}
+                    />
+                  </div>
+                  <button type="submit" disabled={Boolean(storageError) || !reviewAction || !reviewReason.trim()}>
+                    조치 저장
+                  </button>
+                </form>
+              )}
+
+              <h4>안전검토 이력</h4>
+              {task.reviewHistory?.length ? (
+                <ol>
+                  {task.reviewHistory.map((entry, index) => (
+                    <li key={`${entry.changedAt}-${index}`}>
+                      <p>
+                        {entry.action === "취소"
+                          ? "취소: 요청 상태를 ‘취소’로 변경"
+                          : `${entry.action}: ${entry.fromReviewStatus} → ${entry.toReviewStatus}`}
+                      </p>
+                      <p>사유: {entry.reason}</p>
+                      <p>운영자 · {new Date(entry.changedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>안전검토 이력이 없습니다.</p>
+              )}
 
               <h4>요청 상태 관리</h4>
               <p>운영자가 확인한 요청 상태를 수동으로 변경합니다. 매칭 사용자와 봉사 인증은 별도로 관리합니다.</p>

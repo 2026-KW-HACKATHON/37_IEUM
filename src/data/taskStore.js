@@ -1,4 +1,5 @@
 import { initialTasks, taskStatuses } from "./tasks.js";
+import { isValidReviewData } from "./taskReview.js";
 
 export const taskStorageKey = "ieum.tasks.v1";
 
@@ -23,7 +24,8 @@ export function readTaskState(storage) {
     if (!Array.isArray(tasks) || tasks.some((task) =>
       !task || !["number", "string"].includes(typeof task.id) ||
       typeof task.title !== "string" || !taskStatuses.includes(task.status) ||
-      (task.statusHistory !== undefined && !isValidHistory(task.statusHistory))
+      (task.statusHistory !== undefined && !isValidHistory(task.statusHistory)) ||
+      !isValidReviewData(task)
     ) || new Set(tasks.map((task) => task.id)).size !== tasks.length) {
       throw new Error("invalid saved tasks");
     }
@@ -67,6 +69,6 @@ export function saveTasks(storage, tasks) {
   try {
     storage.setItem(taskStorageKey, JSON.stringify(tasks));
   } catch {
-    throw new Error("브라우저에 저장하지 못해 상태를 변경하지 않았습니다. 저장 공간과 브라우저 설정을 확인해주세요.");
+    throw new Error("브라우저에 저장하지 못해 변경사항을 적용하지 않았습니다. 저장 공간과 브라우저 설정을 확인해주세요.");
   }
 }

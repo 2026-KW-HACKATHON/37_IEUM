@@ -5,6 +5,7 @@ import RequesterHome from "./pages/requester/RequesterHome";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import { initialTasks } from "./data/tasks";
 import { readTaskState, changeTaskStatus, saveTasks } from "./data/taskStore";
+import { reviewTask } from "./data/taskReview";
 
 function App() {
   const [userType, setUserType] = useState(null);
@@ -31,6 +32,13 @@ function App() {
     setTaskState({ tasks: nextTasks, storageError: "" });
   }
 
+  function updateTaskReview(taskId, action, reason) {
+    if (taskState.storageError) throw new Error(taskState.storageError);
+    const nextTasks = reviewTask(taskState.tasks, taskId, action, reason);
+    saveTasks(window.localStorage, nextTasks);
+    setTaskState({ tasks: nextTasks, storageError: "" });
+  }
+
   if (userType === "student") {
     return <StudentHome />;
   }
@@ -44,6 +52,7 @@ function App() {
       <AdminDashboard
         tasks={taskState.tasks}
         onStatusChange={updateTaskStatus}
+        onReviewChange={updateTaskReview}
         storageError={taskState.storageError}
       />
     );

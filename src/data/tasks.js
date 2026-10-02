@@ -1,3 +1,12 @@
+export const taskStatuses = [
+  "모집 중",
+  "신청자 있음",
+  "매칭 완료",
+  "진행 중",
+  "활동 완료",
+  "취소"
+];
+
 export const initialTasks = [
   {
     id: 1,

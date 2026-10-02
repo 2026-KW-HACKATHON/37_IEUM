@@ -29,6 +29,27 @@ function AdminDashboard() {
           </div>
         ))}
       </dl>
+
+      <h2>전체 요청 목록</h2>
+      {initialTasks.length === 0 ? (
+        <p>등록된 요청이 없습니다.</p>
+      ) : (
+        initialTasks.map((task) => (
+          <article key={task.id}>
+            <h3>{task.title}</h3>
+            <dl>
+              <dt>활동 종류</dt>
+              <dd>{task.category}</dd>
+              <dt>날짜 / 시간</dt>
+              <dd>{task.date}</dd>
+              <dt>장소</dt>
+              <dd>{task.place}</dd>
+              <dt>현재 상태</dt>
+              <dd>{task.status}</dd>
+            </dl>
+          </article>
+        ))
+      )}
     </div>
   );
 }

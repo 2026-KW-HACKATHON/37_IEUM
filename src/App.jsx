@@ -3,9 +3,33 @@ import { useState } from "react";
 import StudentHome from "./pages/student/StudentHome";
 import RequesterHome from "./pages/requester/RequesterHome";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import { initialTasks } from "./data/tasks";
+import { readTaskState, changeTaskStatus, saveTasks } from "./data/taskStore";
 
 function App() {
   const [userType, setUserType] = useState(null);
+  const [taskState, setTaskState] = useState(() => {
+    try {
+      return readTaskState(window.localStorage);
+    } catch {
+      return {
+        tasks: initialTasks,
+        storageError: "브라우저 저장소에 접근할 수 없어 상태를 저장할 수 없습니다. 브라우저 저장 설정을 확인해주세요."
+      };
+    }
+  });
+
+  function updateTaskStatus(taskId, nextStatus, reason) {
+    if (taskState.storageError) throw new Error(taskState.storageError);
+
+    const nextTasks = changeTaskStatus(taskState.tasks, taskId, nextStatus, reason);
+    try {
+      saveTasks(window.localStorage, nextTasks);
+    } catch (error) {
+      throw new Error(error.message || "브라우저 저장소에 접근할 수 없습니다.", { cause: error });
+    }
+    setTaskState({ tasks: nextTasks, storageError: "" });
+  }
 
   if (userType === "student") {
     return <StudentHome />;
@@ -16,7 +40,13 @@ function App() {
   }
 
   if (userType === "admin") {
-    return <AdminDashboard />;
+    return (
+      <AdminDashboard
+        tasks={taskState.tasks}
+        onStatusChange={updateTaskStatus}
+        storageError={taskState.storageError}
+      />
+    );
   }
 
   return (

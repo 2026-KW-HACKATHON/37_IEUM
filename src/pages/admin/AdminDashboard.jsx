@@ -12,6 +12,11 @@ const taskStatuses = [
 
 function AdminDashboard() {
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("전체");
+
+  const filteredTasks = initialTasks.filter(
+    (task) => statusFilter === "전체" || task.status === statusFilter
+  );
 
   return (
     <div>
@@ -34,10 +39,29 @@ function AdminDashboard() {
       </dl>
 
       <h2>전체 요청 목록</h2>
-      {initialTasks.length === 0 ? (
-        <p>등록된 요청이 없습니다.</p>
+      <label htmlFor="task-status-filter">요청 상태 </label>
+      <select
+        id="task-status-filter"
+        value={statusFilter}
+        onChange={(event) => {
+          setStatusFilter(event.target.value);
+          setSelectedTaskId(null);
+        }}
+      >
+        <option value="전체">전체</option>
+        {taskStatuses.map((status) => (
+          <option key={status} value={status}>{status}</option>
+        ))}
+      </select>
+      <p>조회 결과: {filteredTasks.length}건</p>
+      {filteredTasks.length === 0 ? (
+        <p>
+          {initialTasks.length === 0
+            ? "등록된 요청이 없습니다."
+            : "선택한 상태의 요청이 없습니다."}
+        </p>
       ) : (
-        initialTasks.map((task) => (
+        filteredTasks.map((task) => (
           <article key={task.id}>
             <h3>{task.title}</h3>
             <dl>

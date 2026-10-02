@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { initialTasks } from "../../data/tasks";
 
 const taskStatuses = [
@@ -10,6 +11,8 @@ const taskStatuses = [
 ];
 
 function AdminDashboard() {
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+
   return (
     <div>
       <h1>운영 현황</h1>
@@ -47,6 +50,36 @@ function AdminDashboard() {
               <dt>현재 상태</dt>
               <dd>{task.status}</dd>
             </dl>
+            <button
+              type="button"
+              aria-expanded={selectedTaskId === task.id}
+              aria-controls={`task-detail-${task.id}`}
+              onClick={() =>
+                setSelectedTaskId((currentId) =>
+                  currentId === task.id ? null : task.id
+                )
+              }
+            >
+              {selectedTaskId === task.id ? "상세 닫기" : "상세 보기"}
+            </button>
+            <section
+              id={`task-detail-${task.id}`}
+              hidden={selectedTaskId !== task.id}
+              aria-labelledby={`task-detail-title-${task.id}`}
+            >
+              <h4 id={`task-detail-title-${task.id}`}>요청 상세</h4>
+              <dl>
+                <dt>의뢰자</dt>
+                <dd>{task.client}</dd>
+                <dt>요청 내용</dt>
+                <dd>{task.desc}</dd>
+                <dt>예상 활동 시간</dt>
+                <dd>{task.duration}</dd>
+                <dt>봉사시간 안내</dt>
+                <dd>{task.volTime}</dd>
+              </dl>
+              <p>공식 1365 인증 여부는 확인이 필요합니다.</p>
+            </section>
           </article>
         ))
       )}

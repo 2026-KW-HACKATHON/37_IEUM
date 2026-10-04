@@ -9,9 +9,24 @@ import { reviewTask } from "./data/taskReview";
 import { sampleUsers } from "./data/users";
 import { sampleApplications } from "./data/applications";
 import { createTaskMatch, releaseTaskMatch } from "./data/taskMatching";
+import { readUserState, reviewStudent, saveUsers } from "./data/userVerification";
 
 function App() {
   const [userType, setUserType] = useState(null);
+  const [userState, setUserState] = useState(() => {
+    try {
+      return readUserState(window.localStorage);
+    } catch {
+      return { users: sampleUsers, storageError: "브라우저 저장소에 접근할 수 없어 검증 처리와 새 매칭을 저장할 수 없습니다." };
+    }
+  });
+
+  function updateUserVerification(userId, nextStatus, reason) {
+    if (userState.storageError) throw new Error(userState.storageError);
+    const nextUsers = reviewStudent(userState.users, userId, nextStatus, reason);
+    saveUsers(window.localStorage, nextUsers);
+    setUserState({ users: nextUsers, storageError: "" });
+  }
   const [taskState, setTaskState] = useState(() => {
     try {
       return readTaskState(window.localStorage);
@@ -46,9 +61,10 @@ function App() {
     if (taskState.storageError) throw new Error(taskState.storageError);
     let nextTasks;
     if (action === "매칭") {
-      nextTasks = createTaskMatch(taskState.tasks, sampleUsers, sampleApplications, taskId, studentId, reason);
+      if (userState.storageError) throw new Error(userState.storageError);
+      nextTasks = createTaskMatch(taskState.tasks, userState.users, sampleApplications, taskId, studentId, reason);
     } else if (action === "매칭 해제") {
-      nextTasks = releaseTaskMatch(taskState.tasks, sampleUsers, sampleApplications, taskId, reason);
+      nextTasks = releaseTaskMatch(taskState.tasks, userState.users, sampleApplications, taskId, reason);
     } else {
       throw new Error("지원하지 않는 매칭 처리입니다.");
     }
@@ -67,7 +83,9 @@ function App() {
   if (userType === "admin") {
     return (
       <AdminDashboard
-        users={sampleUsers}
+        users={userState.users}
+        onVerificationChange={updateUserVerification}
+        userStorageError={userState.storageError}
         applications={sampleApplications}
         tasks={taskState.tasks}
         onStatusChange={updateTaskStatus}

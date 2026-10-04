@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { taskStatuses } from "../../data/tasks";
+import { verificationStatuses } from "../../data/userVerification";
 
-function MatchingManagement({ tasks, users, applications, onMatchChange, storageError }) {
+function MatchingManagement({ tasks, users, applications, onMatchChange, storageError, userStorageError }) {
   const [statusFilter, setStatusFilter] = useState("전체");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedStudentId, setSelectedStudentId] = useState("");
@@ -58,6 +59,7 @@ function MatchingManagement({ tasks, users, applications, onMatchChange, storage
       </select>
       <p>조회 결과: {filteredTasks.length}건</p>
       {storageError && <p role="alert">{storageError}</p>}
+      {userStorageError && <p role="alert">{userStorageError}</p>}
       {errorMessage && <p role="alert">{errorMessage}</p>}
       {message && <p role="status">{message}</p>}
 
@@ -73,8 +75,9 @@ function MatchingManagement({ tasks, users, applications, onMatchChange, storage
           const needsMatchInfo = !hasMatchedStudent && ["매칭 완료", "진행 중", "활동 완료"].includes(task.status);
           const applicantStudents = users.filter((user) => user.role === "student" &&
             taskApplications.some((application) => application.studentId === user.id));
+          const approvedApplicants = applicantStudents.filter((student) => student.verificationStatus === "approved");
           const canCreate = !hasMatchedStudent && ["모집 중", "신청자 있음"].includes(task.status) &&
-            task.reviewStatus === "정상" && applicantStudents.length > 0;
+            task.reviewStatus === "정상" && approvedApplicants.length > 0 && !userStorageError;
           const canRelease = hasMatchedStudent && task.status === "매칭 완료";
 
           return (
@@ -124,6 +127,7 @@ function MatchingManagement({ tasks, users, applications, onMatchChange, storage
                           <p>{student ? student.name : "신청자 사용자 정보 확인 필요"}</p>
                           <p>사용자 ID: {application.studentId}</p>
                           <p>소속 대학: {student?.university || "정보 없음"}</p>
+                          <p>검증 상태: {verificationStatuses[student?.verificationStatus] || "미제출"}</p>
                           <p>신청 시각: {validDate
                             ? new Date(application.appliedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
                             : "정보 없음"}</p>
@@ -158,6 +162,9 @@ function MatchingManagement({ tasks, users, applications, onMatchChange, storage
                   <p>모집 중 또는 신청자 있음 상태의 요청만 새로 매칭할 수 있습니다.</p>
                 )}
                 {!hasMatchedStudent && applicantStudents.length === 0 && <p>매칭할 수 있는 신청자가 없습니다.</p>}
+                {!hasMatchedStudent && applicantStudents.length > 0 && approvedApplicants.length === 0 && (
+                  <p>검증 승인된 신청자가 없습니다. 사용자 관리에서 대학생 검증을 먼저 처리해주세요.</p>
+                )}
                 {hasMatchedStudent && !canRelease && (
                   <p>활동 시작 전 매칭 완료 상태에서만 매칭을 해제할 수 있습니다.</p>
                 )}
@@ -174,7 +181,7 @@ function MatchingManagement({ tasks, users, applications, onMatchChange, storage
                           disabled={Boolean(storageError)}
                         >
                           <option value="">신청자를 선택해주세요</option>
-                          {applicantStudents.map((student) => (
+                          {approvedApplicants.map((student) => (
                             <option key={student.id} value={student.id}>{student.name}</option>
                           ))}
                         </select>

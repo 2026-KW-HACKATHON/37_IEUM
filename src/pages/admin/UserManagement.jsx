@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { verificationStatuses } from "../../data/userVerification";
 
 function getUserType(user) {
   if (user.role === "student") return "대학생";
@@ -8,11 +9,40 @@ function getUserType(user) {
   return "역할 확인 필요";
 }
 
-function UserManagement({ users }) {
+function UserManagement({ users, onVerificationChange, storageError }) {
   const [userFilter, setUserFilter] = useState("all");
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [verificationFilter, setVerificationFilter] = useState("all");
+  const [decision, setDecision] = useState("");
+  const [reason, setReason] = useState("");
+  const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  function resetDetails(userId = null) {
+    setSelectedUserId(userId);
+    setDecision("");
+    setReason("");
+    setMessage("");
+    setErrorMessage("");
+  }
+
+  function handleVerification(event, user) {
+    event.preventDefault();
+    setMessage("");
+    setErrorMessage("");
+    try {
+      onVerificationChange(user.id, decision, reason);
+      setMessage(`‘${user.name}’ 검증을 ‘${verificationStatuses[decision]}’ 처리했습니다.`);
+      setDecision("");
+      setReason("");
+    } catch (error) {
+      setErrorMessage(error.message);
+    }
+  }
 
   const filteredUsers = users.filter((user) => {
+    if (verificationFilter !== "all" &&
+      (user.role !== "student" || user.verificationStatus !== verificationFilter)) return false;
     if (userFilter === "all") return true;
     if (userFilter === "student" || userFilter === "requester") return user.role === userFilter;
     return user.role === "requester" && user.requesterType === userFilter;
@@ -25,13 +55,16 @@ function UserManagement({ users }) {
         <p>테스트용 샘플 데이터입니다. 실제 가입 사용자나 요청의 의뢰자와 연결된 정보가 아닙니다.</p>
       )}
       <p>전체 사용자: {users.length}명</p>
+      <p>대학생 검증 대기: {users.filter((user) => user.role === "student" && user.verificationStatus === "pending").length}명</p>
+      <p>검증 상태는 요청 진행 상태와 별도로 관리합니다. 승인된 대학생만 새 매칭 대상으로 선택할 수 있습니다.</p>
       <label htmlFor="admin-user-filter">사용자 유형 </label>
       <select
         id="admin-user-filter"
         value={userFilter}
         onChange={(event) => {
           setUserFilter(event.target.value);
-          setSelectedUserId(null);
+          resetDetails();
+          setVerificationFilter("all");
         }}
       >
         <option value="all">전체</option>
@@ -40,7 +73,21 @@ function UserManagement({ users }) {
         <option value="self">어르신 본인</option>
         <option value="family">어르신 가족</option>
       </select>
+      <label htmlFor="admin-verification-filter"> 대학생 검증 상태 </label>
+      <select id="admin-verification-filter" value={verificationFilter} onChange={(event) => {
+        setVerificationFilter(event.target.value);
+        if (event.target.value !== "all") setUserFilter("student");
+        resetDetails();
+      }}>
+        <option value="all">전체</option>
+        {Object.entries(verificationStatuses).map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </select>
       <p>조회 결과: {filteredUsers.length}명</p>
+      {storageError && <p role="alert">{storageError}</p>}
+      {errorMessage && <p role="alert">{errorMessage}</p>}
+      {message && <p role="status">{message}</p>}
 
       {filteredUsers.length === 0 ? (
         <p>{users.length === 0 ? "등록된 사용자가 없습니다." : "선택한 유형의 사용자가 없습니다."}</p>
@@ -54,11 +101,12 @@ function UserManagement({ users }) {
             <article key={user.id}>
               <h3>{user.name}</h3>
               <p>{getUserType(user)}</p>
+              {user.role === "student" && <p>검증 상태: {verificationStatuses[user.verificationStatus] || "미제출"}</p>}
               <button
                 type="button"
                 aria-expanded={selectedUserId === user.id}
                 aria-controls={`user-detail-${user.id}`}
-                onClick={() => setSelectedUserId(selectedUserId === user.id ? null : user.id)}
+                onClick={() => resetDetails(selectedUserId === user.id ? null : user.id)}
               >
                 {selectedUserId === user.id ? "기본 정보 닫기" : "기본 정보 보기"}
               </button>
@@ -90,6 +138,42 @@ function UserManagement({ users }) {
                     </>
                   )}
                 </dl>
+                {user.role === "student" && (
+                  <>
+                    <h4>활동자 검증 제출 정보</h4>
+                    <p>제출 시각: {user.verificationSubmittedAt
+                      ? new Date(user.verificationSubmittedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) : "미제출"}</p>
+                    <p>제출 내용: {user.verificationSummary || "제출 정보 없음"}</p>
+                    {user.isDemo && <p>실제 신원 증빙을 확인한 결과가 아닌 기능 검증용 처리입니다.</p>}
+                    {user.verificationStatus === "pending" ? (
+                      <form onSubmit={(event) => handleVerification(event, user)}>
+                        <label htmlFor={`verification-decision-${user.id}`}>검증 처리 결과 </label>
+                        <select id={`verification-decision-${user.id}`} value={selectedUserId === user.id ? decision : ""}
+                          onChange={(event) => setDecision(event.target.value)} required disabled={Boolean(storageError)}>
+                          <option value="">결과를 선택해주세요</option>
+                          <option value="approved">승인</option>
+                          <option value="rejected">반려</option>
+                        </select>
+                        <div>
+                          <label htmlFor={`verification-reason-${user.id}`}>검증 처리 사유 </label>
+                          <textarea id={`verification-reason-${user.id}`} value={selectedUserId === user.id ? reason : ""}
+                            onChange={(event) => setReason(event.target.value)} required disabled={Boolean(storageError)} />
+                        </div>
+                        <button type="submit" disabled={Boolean(storageError) || !decision || !reason.trim()}>검증 결과 저장</button>
+                      </form>
+                    ) : <p>{user.verificationStatus ? "이미 처리된 검증 건입니다." : "검증 정보를 제출한 후 처리할 수 있습니다."}</p>}
+                    <h4>검증 처리 이력</h4>
+                    {user.verificationHistory?.length ? (
+                      <ol>{user.verificationHistory.map((entry, index) => (
+                        <li key={`${entry.changedAt}-${index}`}>
+                          <p>{verificationStatuses[entry.fromStatus]} → {verificationStatuses[entry.toStatus]}</p>
+                          <p>사유: {entry.reason}</p>
+                          <p>운영자 · {new Date(entry.changedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</p>
+                        </li>
+                      ))}</ol>
+                    ) : <p>검증 처리 이력이 없습니다.</p>}
+                  </>
+                )}
               </section>
             </article>
           );

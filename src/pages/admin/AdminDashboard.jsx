@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { taskStatuses } from "../../data/tasks";
 import { reviewStatuses, getReviewActions } from "../../data/taskReview";
+import UserManagement from "./UserManagement";
 
-function AdminDashboard({ tasks, onStatusChange, onReviewChange, storageError }) {
+function AdminDashboard({ tasks, users, onStatusChange, onReviewChange, storageError }) {
+  const [adminView, setAdminView] = useState("requests");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("전체");
   const [nextStatus, setNextStatus] = useState("");
@@ -56,9 +58,24 @@ function AdminDashboard({ tasks, onStatusChange, onReviewChange, storageError })
     }
   }
 
+  if (adminView === "users") {
+    return (
+      <div>
+        <h1>운영자 화면</h1>
+        <button type="button" onClick={() => setAdminView("requests")}>
+          운영 현황 / 요청 관리로 돌아가기
+        </button>
+        <UserManagement users={users} />
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1>운영 현황</h1>
+      <button type="button" onClick={() => setAdminView("users")}>
+        사용자 관리
+      </button>
       <p>등록된 전체 요청과 상태별 요청 수를 확인할 수 있습니다.</p>
 
       <h2>전체 요청 수</h2>

@@ -6,6 +6,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import { initialTasks } from "./data/tasks";
 import { readTaskState, changeTaskStatus, saveTasks } from "./data/taskStore";
 import { reviewTask } from "./data/taskReview";
+import { sampleUsers } from "./data/users";
 
 function App() {
   const [userType, setUserType] = useState(null);
@@ -50,6 +51,7 @@ function App() {
   if (userType === "admin") {
     return (
       <AdminDashboard
+        users={sampleUsers}
         tasks={taskState.tasks}
         onStatusChange={updateTaskStatus}
         onReviewChange={updateTaskReview}

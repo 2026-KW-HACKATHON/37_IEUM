@@ -10,6 +10,8 @@ import { sampleUsers } from "./data/users";
 import { sampleApplications } from "./data/applications";
 import { createTaskMatch, releaseTaskMatch } from "./data/taskMatching";
 import { readUserState, reviewStudent, saveUsers } from "./data/userVerification";
+import { sampleActivities } from "./data/activities";
+import { reviewActivity } from "./data/activityReview";
 
 function App() {
   const [userType, setUserType] = useState(null);
@@ -57,6 +59,13 @@ function App() {
     setTaskState({ tasks: nextTasks, storageError: "" });
   }
 
+  function updateActivityReview(activityId, result, reason, evidence) {
+    if (taskState.storageError) throw new Error(taskState.storageError);
+    const nextTasks = reviewActivity(taskState.tasks, sampleActivities, activityId, result, reason, evidence);
+    saveTasks(window.localStorage, nextTasks);
+    setTaskState({ tasks: nextTasks, storageError: "" });
+  }
+
   function updateTaskMatch(taskId, action, studentId, reason) {
     if (taskState.storageError) throw new Error(taskState.storageError);
     let nextTasks;
@@ -87,6 +96,8 @@ function App() {
         onVerificationChange={updateUserVerification}
         userStorageError={userState.storageError}
         applications={sampleApplications}
+        activities={sampleActivities}
+        onActivityReview={updateActivityReview}
         tasks={taskState.tasks}
         onStatusChange={updateTaskStatus}
         onReviewChange={updateTaskReview}

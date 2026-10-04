@@ -3,8 +3,9 @@ import { taskStatuses } from "../../data/tasks";
 import { reviewStatuses, getReviewActions } from "../../data/taskReview";
 import UserManagement from "./UserManagement";
 import MatchingManagement from "./MatchingManagement";
+import ActivityManagement from "./ActivityManagement";
 
-function AdminDashboard({ tasks, users, applications, onStatusChange, onReviewChange, onMatchChange, onVerificationChange, userStorageError, storageError }) {
+function AdminDashboard({ tasks, users, applications, activities, onActivityReview, onStatusChange, onReviewChange, onMatchChange, onVerificationChange, userStorageError, storageError }) {
   const [adminView, setAdminView] = useState("requests");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("전체");
@@ -71,6 +72,22 @@ function AdminDashboard({ tasks, users, applications, onStatusChange, onReviewCh
     );
   }
 
+  if (adminView === "activities") {
+    return (
+      <div>
+        <h1>운영자 화면</h1>
+        <button type="button" onClick={() => {
+          setAdminView("requests");
+          setSelectedTaskId(null);
+          setSaveMessage("");
+          setSaveError("");
+        }}>운영 현황 / 요청 관리로 돌아가기</button>
+        <ActivityManagement tasks={tasks} users={users} activities={activities}
+          onActivityReview={onActivityReview} storageError={storageError} />
+      </div>
+    );
+  }
+
   if (adminView === "matching") {
     return (
       <div>
@@ -103,6 +120,9 @@ function AdminDashboard({ tasks, users, applications, onStatusChange, onReviewCh
       </button>
       <button type="button" onClick={() => setAdminView("matching")}>
         매칭 관리
+      </button>
+      <button type="button" onClick={() => setAdminView("activities")}>
+        활동 완료·예외 검토
       </button>
       <p>등록된 전체 요청과 상태별 요청 수를 확인할 수 있습니다.</p>
 

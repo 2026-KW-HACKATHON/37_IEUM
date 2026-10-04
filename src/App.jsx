@@ -7,6 +7,7 @@ import { initialTasks } from "./data/tasks";
 import { readTaskState, changeTaskStatus, saveTasks } from "./data/taskStore";
 import { reviewTask } from "./data/taskReview";
 import { sampleUsers } from "./data/users";
+import { sampleApplications } from "./data/applications";
 
 function App() {
   const [userType, setUserType] = useState(null);
@@ -52,6 +53,7 @@ function App() {
     return (
       <AdminDashboard
         users={sampleUsers}
+        applications={sampleApplications}
         tasks={taskState.tasks}
         onStatusChange={updateTaskStatus}
         onReviewChange={updateTaskReview}

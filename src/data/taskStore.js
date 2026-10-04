@@ -1,6 +1,7 @@
 import { initialTasks, taskStatuses } from "./tasks.js";
 import { isValidReviewData } from "./taskReview.js";
 import { clearTaskMatch, isValidMatchingData, validateStatusMatch } from "./taskMatching.js";
+import { isValidActivityReviewData } from "./activityReview.js";
 
 export const taskStorageKey = "ieum.tasks.v1";
 
@@ -26,7 +27,7 @@ export function readTaskState(storage) {
       !task || !["number", "string"].includes(typeof task.id) ||
       typeof task.title !== "string" || !taskStatuses.includes(task.status) ||
       (task.statusHistory !== undefined && !isValidHistory(task.statusHistory)) ||
-      !isValidReviewData(task) || !isValidMatchingData(task)
+      !isValidReviewData(task) || !isValidMatchingData(task) || !isValidActivityReviewData(task)
     ) || new Set(tasks.map((task) => task.id)).size !== tasks.length) {
       throw new Error("invalid saved tasks");
     }

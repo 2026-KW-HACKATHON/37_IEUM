@@ -38,8 +38,7 @@ export function createTaskMatch(tasks, users, applications, taskId, studentId, r
   const student = users.find((user) => user.id === studentId && user.role === "student");
   const application = applications.find((item) => item.taskId === taskId && item.studentId === studentId);
   if (!student || !application) throw new Error("이 요청에 신청한 대학생을 선택해주세요.");
-  // 현재는 테스트 사용자만 있습니다. 실제 사용자 연결 시 검증 승인도 확인합니다.
-  if (!student.isDemo && student.verificationStatus !== "approved") {
+  if (student.verificationStatus !== "approved") {
     throw new Error("검증 승인된 대학생만 매칭할 수 있습니다.");
   }
   const changedAt = new Date().toISOString();

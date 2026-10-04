@@ -7,6 +7,9 @@ export const sampleUsers = [
     role: "student",
     name: "테스트 대학생 1",
     university: "광운대학교 (예시)",
+    verificationStatus: "pending",
+    verificationSubmittedAt: "2026-10-01T09:00:00+09:00",
+    verificationSummary: "본인 확인 및 소속 대학 제출 정보 (테스트 예시, 실제 증빙 아님)",
     joinedAt: "2026-10-01",
     isDemo: true
   },
@@ -15,6 +18,9 @@ export const sampleUsers = [
     role: "student",
     name: "테스트 대학생 2",
     university: "인근 대학교 (예시)",
+    verificationStatus: "pending",
+    verificationSubmittedAt: "2026-10-02T09:00:00+09:00",
+    verificationSummary: "본인 확인 및 소속 대학 제출 정보 (테스트 예시, 실제 증빙 아님)",
     joinedAt: "2026-10-02",
     isDemo: true
   },

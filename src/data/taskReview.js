@@ -28,7 +28,7 @@ export function reviewTask(tasks, taskId, action, reason) {
   const trimmedReason = reason.trim();
 
   return tasks.map((item) => item.id !== taskId ? item : {
-    ...item,
+    ...(action === "취소" ? clearTaskMatch(item, trimmedReason, changedAt, "요청 취소") : item),
     reviewStatus: toReviewStatus,
     status: action === "취소" ? "취소" : item.status,
     ...(action === "취소" ? {
@@ -70,3 +70,4 @@ export function isValidReviewData(task) {
     entry.actorRole === "admin"
   );
 }
+import { clearTaskMatch } from "./taskMatching.js";

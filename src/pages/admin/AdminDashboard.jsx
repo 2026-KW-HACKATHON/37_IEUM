@@ -2,8 +2,9 @@ import { useState } from "react";
 import { taskStatuses } from "../../data/tasks";
 import { reviewStatuses, getReviewActions } from "../../data/taskReview";
 import UserManagement from "./UserManagement";
+import MatchingManagement from "./MatchingManagement";
 
-function AdminDashboard({ tasks, users, onStatusChange, onReviewChange, storageError }) {
+function AdminDashboard({ tasks, users, applications, onStatusChange, onReviewChange, storageError }) {
   const [adminView, setAdminView] = useState("requests");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("전체");
@@ -70,11 +71,26 @@ function AdminDashboard({ tasks, users, onStatusChange, onReviewChange, storageE
     );
   }
 
+  if (adminView === "matching") {
+    return (
+      <div>
+        <h1>운영자 화면</h1>
+        <button type="button" onClick={() => setAdminView("requests")}>
+          운영 현황 / 요청 관리로 돌아가기
+        </button>
+        <MatchingManagement tasks={tasks} users={users} applications={applications} />
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1>운영 현황</h1>
       <button type="button" onClick={() => setAdminView("users")}>
         사용자 관리
+      </button>
+      <button type="button" onClick={() => setAdminView("matching")}>
+        매칭 관리
       </button>
       <p>등록된 전체 요청과 상태별 요청 수를 확인할 수 있습니다.</p>
 

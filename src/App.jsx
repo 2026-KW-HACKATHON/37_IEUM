@@ -8,6 +8,7 @@ import { readTaskState, changeTaskStatus, saveTasks } from "./data/taskStore";
 import { reviewTask } from "./data/taskReview";
 import { sampleUsers } from "./data/users";
 import { sampleApplications } from "./data/applications";
+import { createTaskMatch, releaseTaskMatch } from "./data/taskMatching";
 
 function App() {
   const [userType, setUserType] = useState(null);
@@ -41,6 +42,20 @@ function App() {
     setTaskState({ tasks: nextTasks, storageError: "" });
   }
 
+  function updateTaskMatch(taskId, action, studentId, reason) {
+    if (taskState.storageError) throw new Error(taskState.storageError);
+    let nextTasks;
+    if (action === "매칭") {
+      nextTasks = createTaskMatch(taskState.tasks, sampleUsers, sampleApplications, taskId, studentId, reason);
+    } else if (action === "매칭 해제") {
+      nextTasks = releaseTaskMatch(taskState.tasks, sampleUsers, sampleApplications, taskId, reason);
+    } else {
+      throw new Error("지원하지 않는 매칭 처리입니다.");
+    }
+    saveTasks(window.localStorage, nextTasks);
+    setTaskState({ tasks: nextTasks, storageError: "" });
+  }
+
   if (userType === "student") {
     return <StudentHome />;
   }
@@ -57,6 +72,7 @@ function App() {
         tasks={taskState.tasks}
         onStatusChange={updateTaskStatus}
         onReviewChange={updateTaskReview}
+        onMatchChange={updateTaskMatch}
         storageError={taskState.storageError}
       />
     );

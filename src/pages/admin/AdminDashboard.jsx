@@ -4,7 +4,7 @@ import { reviewStatuses, getReviewActions } from "../../data/taskReview";
 import UserManagement from "./UserManagement";
 import MatchingManagement from "./MatchingManagement";
 
-function AdminDashboard({ tasks, users, applications, onStatusChange, onReviewChange, storageError }) {
+function AdminDashboard({ tasks, users, applications, onStatusChange, onReviewChange, onMatchChange, storageError }) {
   const [adminView, setAdminView] = useState("requests");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("전체");
@@ -75,10 +75,21 @@ function AdminDashboard({ tasks, users, applications, onStatusChange, onReviewCh
     return (
       <div>
         <h1>운영자 화면</h1>
-        <button type="button" onClick={() => setAdminView("requests")}>
+        <button type="button" onClick={() => {
+          setAdminView("requests");
+          setSelectedTaskId(null);
+          setSaveMessage("");
+          setSaveError("");
+        }}>
           운영 현황 / 요청 관리로 돌아가기
         </button>
-        <MatchingManagement tasks={tasks} users={users} applications={applications} />
+        <MatchingManagement
+          tasks={tasks}
+          users={users}
+          applications={applications}
+          onMatchChange={onMatchChange}
+          storageError={storageError}
+        />
       </div>
     );
   }

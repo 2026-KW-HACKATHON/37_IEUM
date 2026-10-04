@@ -1,5 +1,6 @@
 import { initialTasks, taskStatuses } from "./tasks.js";
 import { isValidReviewData } from "./taskReview.js";
+import { clearTaskMatch, isValidMatchingData, validateStatusMatch } from "./taskMatching.js";
 
 export const taskStorageKey = "ieum.tasks.v1";
 
@@ -25,7 +26,7 @@ export function readTaskState(storage) {
       !task || !["number", "string"].includes(typeof task.id) ||
       typeof task.title !== "string" || !taskStatuses.includes(task.status) ||
       (task.statusHistory !== undefined && !isValidHistory(task.statusHistory)) ||
-      !isValidReviewData(task)
+      !isValidReviewData(task) || !isValidMatchingData(task)
     ) || new Set(tasks.map((task) => task.id)).size !== tasks.length) {
       throw new Error("invalid saved tasks");
     }
@@ -48,9 +49,11 @@ export function changeTaskStatus(tasks, taskId, nextStatus, reason) {
   if (typeof reason !== "string" || !reason.trim()) {
     throw new Error("상태 변경 사유를 입력해주세요.");
   }
+  validateStatusMatch(task, nextStatus);
+  const changedAt = new Date().toISOString();
 
   return tasks.map((item) => item.id !== taskId ? item : {
-    ...item,
+    ...(nextStatus === "취소" ? clearTaskMatch(item, reason.trim(), changedAt, "요청 취소") : item),
     status: nextStatus,
     statusHistory: [
       ...(item.statusHistory ?? []),
@@ -58,7 +61,7 @@ export function changeTaskStatus(tasks, taskId, nextStatus, reason) {
         fromStatus: item.status,
         toStatus: nextStatus,
         reason: reason.trim(),
-        changedAt: new Date().toISOString(),
+        changedAt,
         actorRole: "admin"
       }
     ]

@@ -1,0 +1,66 @@
+# 월계 이음 비대면 봉사 운영 연결
+
+운영자 화면은 비대면 기획으로 전환했습니다. 학생·의뢰자 페이지와 공통 UI 파일은 수정하지 않았습니다. 현재 데이터는 테스트 예시이고 서버·업로드·알림·실제 1365 등록과 연결되지 않습니다.
+
+## 데이터와 저장
+
+- `src/data/noncontact.js`: 봉사 유형, 상태, 테스트 의뢰·활동·신청·배정·제출 데이터.
+- `src/data/noncontactStore.js`: 운영 처리 함수와 저장 검증.
+- `ieum.noncontact.v1`: 새 비대면 운영 데이터. 한 JSON 객체 안에 `requests`, `activities`, `applications`, `assignments`를 저장합니다.
+- 기존 `ieum.tasks.v1` 대면 기록은 읽거나 덮어쓰지 않습니다. 기존 대면용 데이터/페이지 파일도 보존했지만 운영자 메뉴에서 사용하지 않습니다.
+- 대학생 검증과 `ieum.users.v1`은 재사용합니다. 저장이 실패하면 화면 상태를 적용하지 않습니다. 손상된 저장값은 자동 삭제·덮어쓰기하지 않습니다.
+
+## 연결 관계
+
+| 데이터 | 주요 필드 | 연결 |
+|---|---|---|
+| 의뢰 `requests` | `id`, `requesterId`, `type`, `description`, `situation`, `desiredResult`, `period`, `status`, `history` | 의뢰자 계정 |
+| 봉사활동 `activities` | 공유 명세의 `id`, `title`, `type`, `description`, `target`, `period`, `status`, `capacity`, `requirements`, `resultType`, `evidence`, `deadline` | `requestId`로 원 의뢰 연결 |
+| 신청 `applications` | `id`, `activityId`, `studentId`, `appliedAt` | 봉사활동·대학생 |
+| 배정 `assignments` | `id`, `activityId`, `studentId`, `status`, `assignedAt`, `history`, `submissions`, `certification` | 신청자 중 선택된 봉사자 |
+| 제출 `submissions` | `id`, `result`, `activityLog`, `evidence`, `workedMinutes`, `submittedAt`, `review` | 해당 배정의 제출 버전 배열 |
+
+봉사활동은 추가로 `startDate`, `endDate`, `recognitionCriteria`, `recruitmentOpen`, `guidance`, `institutionApproved`, `institutionName`, `institutionApprovalRef`를 갖습니다. 날짜는 `YYYY-MM-DD`, 시각은 ISO 문자열, 활동 시간은 정수(분)입니다.
+
+현재 한 의뢰당 한 봉사활동을 등록합니다. `capacity`만큼 여러 학생을 배정할 수 있습니다. 신청자 수와 배정 수를 구분하며 이미 배정된 학생의 중복 배정은 막습니다.
+
+## 상태
+
+- 의뢰: `요청 접수` → `운영자 검토` → `승인` / `반려` / `수정 요청`. 접수에서 바로 결정할 수도 있습니다. 의뢰 승인과 기관 사전 승인은 별개입니다.
+- 봉사자별 진행: `봉사자 배정` → `진행 중` → `결과물 제출` → `검토 중` → `승인` → `인증 완료`.
+- 보완: `검토 중` → `보완 요청` → 학생 재제출 → `재제출` → `검토 중`.
+- 봉사활동 등록 직후 `status`는 `모집 중`이지만 `recruitmentOpen`은 `false`입니다. 학생 목록은 **모집 시작 여부와 남은 정원도 확인**해야 합니다. 상태만으로 노출하지 않습니다.
+- 여러 봉사자가 있으면 활동 `status`는 완료되지 않은 봉사자의 가장 앞선 단계를 보여줍니다. 개인 진행과 검토 건수는 `assignments`를 사용합니다.
+- 이전 여섯 가지 대면 요청 상태는 새 비대면 데이터에 사용하지 않습니다.
+
+## 학생·의뢰자 연결 시
+
+학생 페이지의 기존 `loadHome`, `onApply`, `onNavigate` 연결은 공통/통합 담당자와 합의해 작업합니다. 현재 이 브랜치에서는 학생 홈에 새 데이터를 전달하지 않습니다.
+
+1. 의뢰자 접수는 `requests`에 요청과 의뢰자 ID를 기록합니다. 수정 요청을 받은 의뢰의 재접수와 수정 이력도 의뢰자/통합 담당자와 연결해야 합니다.
+2. 학생 신청은 `applications`에 `activityId`, `studentId`, 신청 시각을 기록합니다. 서버에서 로그인·검증 승인·모집 여부·중복 신청을 검사해야 합니다. 현재 신청 목록은 테스트 예시입니다.
+3. 배정 학생은 활동의 `guidance`와 제출 기한을 확인합니다. 안내 저장은 실제 교육 이수/학생 확인을 뜻하지 않습니다.
+4. `submitVolunteerResult(state, assignmentId, studentId, fields)`는 학생 제출 연결용 순수 함수입니다. `fields`는 `{ result, activityLog, evidence, workedMinutes, isDemo }`입니다. 실제 업로드 결과의 파일 참조를 전달하고 서버에서 본인 권한을 검증해야 합니다.
+5. 제출은 진행 중 또는 보완 요청 상태에서만 받습니다. 재제출 시 이전 제출물과 검토 기록을 보존합니다. 운영자는 학생을 대신해 결과물을 만들거나 재제출하지 않습니다.
+6. 의뢰자 결과 화면은 자기 의뢰의 `requestId` → 봉사활동 → 배정/제출을 조회합니다. 개인정보 접근 범위와 공개 가능한 결과물은 통합 단계에서 정해야 합니다.
+
+## 내부 인증과 기관 실적
+
+결과물·활동일지·증빙 확인 후 내부 인정 시간을 기록할 수 있습니다. 제출 활동 시간을 초과하는 인정 시간과 사유 없는 승인은 막습니다. 0분 승인도 가능하며, 실제 기관의 인정 요건을 충족했다는 보장이 아닙니다.
+
+최신 제출본 승인 후 기록 번호와 근거를 입력하면 서비스 **내부 인증** 상태가 됩니다. 기관 제출, 기관 최종 승인, 공식 1365 등록 완료 상태는 아직 구현하지 않았습니다. 내부 인증을 1365 등록 완료로 표시하면 안 됩니다.
+
+## 확인 순서
+
+1. 운영자 → 의뢰 검토 → 테스트 의뢰 승인 → 봉사활동 필수 정보 입력·등록.
+2. 봉사활동 관리 → 모집 시작 → 활동 안내 저장.
+3. 사용자 관리 → 신청한 테스트 학생 검증 승인 → 배정 → 활동 시작 확인.
+4. 기존 테스트 제출본은 결과물 검토 메뉴에서 검토 시작 → 승인 또는 보완 요청.
+5. 승인 후 내부 인증 번호·근거 입력 → 대시보드 반영과 새로고침 후 저장 유지 확인.
+
+사용자 검증의 기존 브라우저 저장 기록을 재사용하므로 테스트 학생이 이미 반려되어 있을 수 있습니다. 검증 결과를 임의로 다시 승인하지 않습니다.
+
+## 로직 검증
+
+자동 검증: node --test --test-isolation=none tests/noncontactStore.test.js
+

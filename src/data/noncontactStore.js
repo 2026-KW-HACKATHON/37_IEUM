@@ -83,6 +83,78 @@ export function saveNoncontactState(storage, state) {
   catch { throw new Error("브라우저에 저장하지 못해 변경사항을 적용하지 않았습니다. 저장 설정과 공간을 확인해주세요."); }
 }
 
+export function submitRequesterRequest(state, request) {
+  const requesterId = requireText(request.requesterId, "요청자 정보를 확인할 수 없습니다.");
+  const title = requireText(request.title, "도움 제목을 입력해주세요.");
+  const type = request.type;
+  if (!volunteerTypes.includes(type)) throw new Error("도움 유형을 선택해주세요.");
+  const target = requireText(request.target, "도움이 필요한 대상을 확인할 수 없습니다.");
+  const description = requireText(request.description, "필요한 도움을 입력해주세요.");
+  const desiredResult = requireText(request.desiredResult, "원하는 결과물을 선택해주세요.");
+  const period = requireText(request.period, "희망 기간을 선택해주세요.");
+  if (request.situation !== undefined && typeof request.situation !== "string") throw new Error("상황 설명을 확인해주세요.");
+  const nextRequest = {
+    id: `request-${id()}`,
+    requesterId,
+    target,
+    title,
+    type,
+    description,
+    situation: request.situation?.trim() ?? "",
+    desiredResult,
+    period,
+    status: "요청 접수",
+    isDemo: false,
+    history: [],
+    ...(request.ageGroup && { ageGroup: request.ageGroup }),
+    ...(request.elderName && { elderName: request.elderName.trim() }),
+  };
+  return { ...state, requests: [nextRequest, ...state.requests] };
+}
+
+export function reviseRequesterRequest(state, requestId, requesterId, request) {
+  const existing = state.requests.find((item) => item.id === requestId && item.requesterId === requesterId);
+  if (!existing) throw new Error("수정할 의뢰를 찾을 수 없습니다.");
+  if (existing.status !== "수정 요청") throw new Error("운영자가 수정을 요청한 의뢰만 다시 제출할 수 있습니다.");
+  if (state.activities.some((activity) => activity.requestId === requestId)) throw new Error("봉사활동 등록이 시작된 의뢰는 수정할 수 없습니다.");
+  const nextState = submitRequesterRequest(
+    { ...state, requests: state.requests.filter((item) => item.id !== requestId) },
+    { ...request, requesterId }
+  );
+  const replacement = nextState.requests[0];
+  return {
+    ...nextState,
+    requests: nextState.requests.map((item) => item.id === replacement.id
+      ? { ...item, id: requestId, status: "요청 접수" }
+      : item),
+  };
+}
+
+export function applyToActivity(state, users, activityId, studentId) {
+  const activity = activityOf(state, activityId);
+  if (!activity.recruitmentOpen || ["승인", "인증 완료", "취소"].includes(activity.status)) {
+    throw new Error("현재 모집 중인 봉사활동이 아닙니다.");
+  }
+  const student = users.find((user) => user.id === studentId && user.role === "student");
+  if (!student || student.verificationStatus !== "approved") throw new Error("검증 승인된 대학생만 신청할 수 있습니다.");
+  if (state.applications.some((application) => application.activityId === activityId && application.studentId === studentId)) {
+    throw new Error("이미 신청한 봉사활동입니다.");
+  }
+  if (state.assignments.filter((assignment) => assignment.activityId === activityId).length >= activity.capacity) {
+    throw new Error("모집 인원이 모두 찼습니다.");
+  }
+  return {
+    ...state,
+    applications: [...state.applications, {
+      id: `application-${id()}`,
+      activityId,
+      studentId,
+      appliedAt: now(),
+      isDemo: false,
+    }],
+  };
+}
+
 export function reviewRequest(state, requestId, decision, reason) {
   const request = state.requests.find((item) => item.id === requestId);
   if (!request) throw new Error("의뢰를 찾을 수 없습니다.");

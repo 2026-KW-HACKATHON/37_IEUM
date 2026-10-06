@@ -9,7 +9,7 @@ function getUserType(user) {
   return "역할 확인 필요";
 }
 
-function UserManagement({ users, onVerificationChange, storageError }) {
+function UserManagement({ users, onVerificationChange, onAddressVerificationChange, storageError }) {
   const [userFilter, setUserFilter] = useState("all");
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [verificationFilter, setVerificationFilter] = useState("all");
@@ -40,6 +40,20 @@ function UserManagement({ users, onVerificationChange, storageError }) {
     }
   }
 
+  function handleAddressVerification(event, user) {
+    event.preventDefault();
+    setMessage("");
+    setErrorMessage("");
+    try {
+      onAddressVerificationChange(user.id, decision, reason);
+      setMessage(`‘${user.name}’ 주소 확인을 ‘${verificationStatuses[decision]}’ 처리했습니다.`);
+      setDecision("");
+      setReason("");
+    } catch (error) {
+      setErrorMessage(error.message);
+    }
+  }
+
   const filteredUsers = users.filter((user) => {
     if (verificationFilter !== "all" &&
       (user.role !== "student" || user.verificationStatus !== verificationFilter)) return false;
@@ -56,7 +70,8 @@ function UserManagement({ users, onVerificationChange, storageError }) {
       )}
       <p>전체 사용자: {users.length}명</p>
       <p>대학생 검증 대기: {users.filter((user) => user.role === "student" && user.verificationStatus === "pending").length}명</p>
-      <p>검증 상태는 요청 진행 상태와 별도로 관리합니다. 승인된 대학생만 새 매칭 대상으로 선택할 수 있습니다.</p>
+      <p>주소 확인 대기: {users.filter((user) => user.role === "requester" && user.addressVerificationStatus === "pending").length}명</p>
+      <p>학생 증빙과 의뢰자 주소를 확인한 뒤 처리하세요. 승인된 대학생만 새 매칭 대상으로 선택할 수 있습니다.</p>
       <label htmlFor="admin-user-filter">사용자 유형 </label>
       <select
         id="admin-user-filter"
@@ -137,13 +152,50 @@ function UserManagement({ users, onVerificationChange, storageError }) {
                       <dd>{linkedElder ? linkedElder.name : "연결 정보 없음"}</dd>
                     </>
                   )}
+                  {user.role === "requester" && (
+                    <>
+                      <dt>거주지 주소</dt>
+                      <dd>{user.address || "미등록"}</dd>
+                      <dt>주소 확인 상태</dt>
+                      <dd>{verificationStatuses[user.addressVerificationStatus] || "미제출"}</dd>
+                    </>
+                  )}
                 </dl>
+                {user.role === "requester" && user.addressVerificationStatus === "pending" && (
+                  <form onSubmit={(event) => handleAddressVerification(event, user)}>
+                    <h4>주소 확인 처리</h4>
+                    <label htmlFor={`address-decision-${user.id}`}>확인 결과 </label>
+                    <select id={`address-decision-${user.id}`} value={selectedUserId === user.id ? decision : ""}
+                      onChange={(event) => setDecision(event.target.value)} required disabled={Boolean(storageError)}>
+                      <option value="">결과를 선택해주세요</option>
+                      <option value="approved">승인</option>
+                      <option value="rejected">반려</option>
+                    </select>
+                    <div>
+                      <label htmlFor={`address-reason-${user.id}`}>처리 사유 </label>
+                      <textarea id={`address-reason-${user.id}`} value={selectedUserId === user.id ? reason : ""}
+                        onChange={(event) => setReason(event.target.value)} required disabled={Boolean(storageError)} />
+                    </div>
+                    <button type="submit" disabled={Boolean(storageError) || !decision || !reason.trim()}>주소 확인 결과 저장</button>
+                  </form>
+                )}
+                {user.addressVerificationHistory?.length > 0 && (
+                  <>
+                    <h4>주소 확인 이력</h4>
+                    <ol>{user.addressVerificationHistory.map((entry, index) => (
+                      <li key={`${entry.changedAt}-${index}`}>
+                        {verificationStatuses[entry.fromStatus]} → {verificationStatuses[entry.toStatus]} · {entry.reason} · 운영자 · {new Date(entry.changedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                      </li>
+                    ))}</ol>
+                  </>
+                )}
                 {user.role === "student" && (
                   <>
                     <h4>활동자 검증 제출 정보</h4>
                     <p>제출 시각: {user.verificationSubmittedAt
                       ? new Date(user.verificationSubmittedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }) : "미제출"}</p>
                     <p>제출 내용: {user.verificationSummary || "제출 정보 없음"}</p>
+                    {user.verificationDocumentName && <p>선택한 증빙 사진: {user.verificationDocumentName} (파일 원본 미저장)</p>}
                     {user.isDemo && <p>실제 신원 증빙을 확인한 결과가 아닌 기능 검증용 처리입니다.</p>}
                     {user.verificationStatus === "pending" ? (
                       <form onSubmit={(event) => handleVerification(event, user)}>

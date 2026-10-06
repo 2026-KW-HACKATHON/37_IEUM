@@ -30,6 +30,10 @@ function RequestManagement({ data, users, onCommand, disabled }) {
         <h3>{request.title}</h3><p>{request.type} · {request.status}</p>
         <details><summary>의뢰 상세 / 검토</summary>
           <dl><dt>의뢰자</dt><dd>{requester?.name || request.requesterId}</dd>
+            <dt>연락처</dt><dd>{requester?.phone || "미등록"}</dd>
+            <dt>회원 유형</dt><dd>{requester?.requesterType === "family" ? "어르신 가족" : requester?.requesterType === "self" ? "어르신 본인" : "테스트 계정"}</dd>
+            {requester?.address && <><dt>등록 주소</dt><dd>{requester.address}</dd></>}
+            {requester?.ageGroup && <><dt>가입 연령대</dt><dd>{requester.ageGroup}</dd></>}
             <dt>의뢰 대상</dt><dd>{request.target}</dd><dt>필요한 도움</dt><dd>{request.description}</dd>
             <dt>어르신 상황</dt><dd>{request.situation}</dd><dt>희망 결과물</dt><dd>{request.desiredResult}</dd>
             <dt>희망 기간</dt><dd>{request.period}</dd></dl>

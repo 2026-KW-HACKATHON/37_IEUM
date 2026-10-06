@@ -3,16 +3,21 @@ import { sampleUsers } from "./users.js";
 export const verificationStatuses = { pending: "검증 대기", approved: "승인", rejected: "반려" };
 export const userStorageKey = "ieum.users.v1";
 
+function validReviewHistory(history) {
+  return history === undefined || (Array.isArray(history) && history.every((entry) =>
+    entry && entry.fromStatus === "pending" && ["approved", "rejected"].includes(entry.toStatus) &&
+    typeof entry.reason === "string" && entry.reason.trim() && typeof entry.changedAt === "string" &&
+    Number.isFinite(Date.parse(entry.changedAt)) && entry.actorRole === "admin"));
+}
+
 function validUsers(users) {
   return Array.isArray(users) && new Set(users.map((user) => user?.id)).size === users.length &&
     users.every((user) => user && typeof user.id === "string" && user.id.trim() &&
       typeof user.name === "string" && ["student", "requester"].includes(user.role) &&
       (user.verificationStatus === undefined || Object.hasOwn(verificationStatuses, user.verificationStatus)) &&
-      (user.verificationHistory === undefined || (Array.isArray(user.verificationHistory) &&
-        user.verificationHistory.every((entry) => entry && entry.fromStatus === "pending" &&
-          ["approved", "rejected"].includes(entry.toStatus) && typeof entry.reason === "string" &&
-          entry.reason.trim() && typeof entry.changedAt === "string" &&
-          Number.isFinite(Date.parse(entry.changedAt)) && entry.actorRole === "admin"))));
+      (user.addressVerificationStatus === undefined || ["pending", "approved", "rejected"].includes(user.addressVerificationStatus)) &&
+      validReviewHistory(user.verificationHistory) &&
+      validReviewHistory(user.addressVerificationHistory));
 }
 
 export function readUserState(storage) {
@@ -41,6 +46,24 @@ export function reviewStudent(users, userId, nextStatus, reason) {
     ...item,
     verificationStatus: nextStatus,
     verificationHistory: [...(item.verificationHistory ?? []), {
+      fromStatus: "pending", toStatus: nextStatus, reason: reason.trim(), changedAt, actorRole: "admin"
+    }]
+  });
+}
+
+export function reviewRequesterAddress(users, userId, nextStatus, reason) {
+  const user = users.find((item) => item.id === userId);
+  if (!user || user.role !== "requester") throw new Error("의뢰자를 찾을 수 없습니다.");
+  if (user.addressVerificationStatus !== "pending" || !user.address) {
+    throw new Error("주소 확인 대기 중인 제출 건만 처리할 수 있습니다.");
+  }
+  if (!["approved", "rejected"].includes(nextStatus)) throw new Error("주소 확인 승인 또는 반려를 선택해주세요.");
+  if (typeof reason !== "string" || !reason.trim()) throw new Error("주소 확인 처리 사유를 입력해주세요.");
+  const changedAt = new Date().toISOString();
+  return users.map((item) => item.id !== userId ? item : {
+    ...item,
+    addressVerificationStatus: nextStatus,
+    addressVerificationHistory: [...(item.addressVerificationHistory ?? []), {
       fromStatus: "pending", toStatus: nextStatus, reason: reason.trim(), changedAt, actorRole: "admin"
     }]
   });

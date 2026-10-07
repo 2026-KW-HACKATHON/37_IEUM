@@ -65,7 +65,7 @@ const TYPES = [
   },
 ];
 const AGE_GROUPS = ["60대", "70대", "80대", "90대 이상"];
-const RESULT_TYPES = ["영상", "PDF 안내문", "사진 자료", "글 기록"];
+const RESULT_TYPES = ["영상", "읽기 쉬운 안내자료", "사진 자료", "글 기록"];
 const PERIODS = ["1주일 이내", "2주일 이내", "한 달 이내"];
 
 const SAMPLE = [
@@ -74,7 +74,7 @@ const SAMPLE = [
     who: "가족", elderName: "이순자 어르신", ageGroup: "70대",
     need: "병원 앱으로 진료 예약하는 방법을 알고 싶어요.",
     situation: "스마트폰은 쓰시지만 앱 설치와 로그인을 어려워하세요.",
-    resultWanted: "PDF 안내문", period: "2주일 이내", note: "글씨는 크게 부탁드려요.",
+    resultWanted: "읽기 쉬운 안내자료", period: "2주일 이내", note: "글씨는 크게 부탁드려요.",
     status: "진행 중",
     activity: { title: "어르신 스마트폰 병원 예약 안내", period: "2026.10.10 ~ 2026.10.17" },
   },
@@ -174,7 +174,6 @@ export default function RequesterHome({
   const [form, setForm] = useState(() => ({
     ...EMPTY_FORM,
     who: requesterType === "family" ? "가족" : "본인",
-    ageGroup: requesterType === "self" ? profile?.ageGroup ?? "" : "",
   }));
   const [step, setStep] = useState(1);
   const [editingId, setEditingId] = useState(null);
@@ -195,7 +194,6 @@ export default function RequesterHome({
     setForm({
       ...EMPTY_FORM,
       who: requesterType === "family" ? "가족" : "본인",
-      ageGroup: requesterType === "self" ? profile?.ageGroup ?? "" : "",
     });
     setEditingId(null);
     setStep(1);
@@ -204,7 +202,7 @@ export default function RequesterHome({
   const startEdit = (r) => { setForm({ ...EMPTY_FORM, ...r }); setEditingId(r.id); setStep(3); setView("form"); };
 
   const canNext = {
-    1: form.who === "본인" ? !!form.ageGroup : !!(form.elderName.trim() && form.ageGroup),
+    1: form.who === "본인" || Boolean(form.elderName.trim() && form.ageGroup),
     2: !!form.type,
     3: !!(form.need.trim() && form.resultWanted && form.period),
     4: true,
@@ -267,7 +265,7 @@ export default function RequesterHome({
                       <button className="rq-card" onClick={() => openDetail(r.id)}>
                         <div className="top"><span className="type">{typeLabel(r.type)}</span><StatusChip status={r.status} simpleMode={simpleMode} /></div>
                         <strong>{r.title}</strong>
-                        <span className="sub">{r.who === "가족" ? `${r.elderName} · ${r.ageGroup}` : `본인 · ${r.ageGroup}`}</span>
+                        <span className="sub">{r.who === "가족" ? `${r.elderName} · ${r.ageGroup}` : "본인"}</span>
                         {r.status === "수정 요청" && <span className="hint">{simpleMode ? "담당자가 내용을 더 알려달라고 했어요" : "운영자의 수정 요청이 있어요"}</span>}
                       </button>
                     </li>
@@ -293,24 +291,20 @@ export default function RequesterHome({
 
             {step === 1 && (
               <section className="rq-step">
-                <h2>{requesterType === "family"
-                  ? "누구를 위한 도움인가요?"
-                  : profile?.ageGroup ? "회원가입 때 알려주신 연령대예요." : "연령대를 골라 주세요."}</h2>
+                <h2>{requesterType === "family" ? "누구를 위한 도움인가요?" : "도움받을 내용을 알려주세요."}</h2>
                 {form.who === "가족" && (
                   <label className="rq-field">{simpleMode ? "어르신 성함이나 부르는 이름" : "어르신 성함 또는 호칭"}
                     <input value={form.elderName} onChange={(e) => set({ elderName: e.target.value })} placeholder="예) 이순자 어르신" />
                   </label>
                 )}
-                <div className="rq-field">
-                  <span>{form.who === "가족" ? "어르신 연령대" : simpleMode ? "내 나이대" : "내 연령대"}</span>
-                  {requesterType === "self" && profile?.ageGroup
-                    ? <p className="rq-note">{profile.ageGroup} (회원가입 때 알려주신 정보)</p>
-                    : <div className="rq-pills">
-                      {AGE_GROUPS.map((a) => (
-                        <button key={a} className={form.ageGroup === a ? "on" : ""} onClick={() => set({ ageGroup: a })}>{a}</button>
-                      ))}
-                    </div>}
-                </div>
+                {form.who === "가족" && <div className="rq-field">
+                  <span>어르신 연령대</span>
+                  <div className="rq-pills">
+                    {AGE_GROUPS.map((a) => (
+                      <button key={a} className={form.ageGroup === a ? "on" : ""} onClick={() => set({ ageGroup: a })}>{a}</button>
+                    ))}
+                  </div>
+                </div>}
               </section>
             )}
 
@@ -363,7 +357,7 @@ export default function RequesterHome({
               <section className="rq-step">
                 <h2>{simpleMode ? "이 내용으로 부탁할까요?" : "이대로 요청할까요?"}</h2>
                 <dl className="rq-dl">
-                  <dt>{simpleMode ? "도움받을 분" : "대상"}</dt><dd>{form.who === "가족" ? `${form.elderName} (${form.ageGroup})` : `본인 (${form.ageGroup})`}</dd>
+                  <dt>{simpleMode ? "도움받을 분" : "대상"}</dt><dd>{form.who === "가족" ? `${form.elderName} (${form.ageGroup})` : "본인"}</dd>
                   <dt>{simpleMode ? "도움 종류" : "도움 유형"}</dt><dd>{typeLabel(form.type)}</dd>
                   <dt>필요한 도움</dt><dd>{form.need}</dd>
                   {form.situation && (<><dt>{simpleMode ? "미리 알려주실 내용" : "어르신의 상황"}</dt><dd>{form.situation}</dd></>)}
@@ -458,7 +452,7 @@ export default function RequesterHome({
               <section>
                 <h3 className="rq-h3">{simpleMode ? "부탁하신 내용" : "요청 내용"}</h3>
                 <dl className="rq-dl">
-                  <dt>{simpleMode ? "도움받을 분" : "대상"}</dt><dd>{selected.who === "가족" ? `${selected.elderName} (${selected.ageGroup})` : `본인 (${selected.ageGroup})`}</dd>
+                  <dt>{simpleMode ? "도움받을 분" : "대상"}</dt><dd>{selected.who === "가족" ? `${selected.elderName} (${selected.ageGroup})` : "본인"}</dd>
                   <dt>필요한 도움</dt><dd>{selected.need}</dd>
                   {selected.situation && (<><dt>{simpleMode ? "미리 알려주신 내용" : "어르신의 상황"}</dt><dd>{selected.situation}</dd></>)}
                   <dt>{simpleMode ? "받고 싶은 자료" : "원하는 결과물"}</dt><dd>{selected.resultWanted}</dd>

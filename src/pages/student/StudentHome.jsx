@@ -24,7 +24,6 @@ const ROUTE = {
   EVENT_LIST: "eventList",       // n51 지역활동 목록
   REPORT: "report",              // n49 생활불편 제보
   HOURS: "hours",                // n45 봉사시간 내역
-  SETTINGS: "settings",          // n56 프로필·설정
   ACTIVITY: "activity",          // 진행 중 활동 상세(params: { id })
   REQUEST: "request",            // 의뢰 상세(params: { id })
   EVENT: "event",                // 지역활동 상세(params: { id })
@@ -266,7 +265,6 @@ function StudentHome({
           )}
         />
 
-        <button className="ih-link" onClick={() => go(ROUTE.SETTINGS)}>프로필·설정</button>
       </main>
     </div>
   );

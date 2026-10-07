@@ -3,6 +3,7 @@ import StudentHome from "./pages/student/StudentHome";
 import RequesterHome from "./pages/requester/RequesterHome";
 import LoginHome from "./pages/login/LoginHome";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import VerificationPending from "./components/VerificationPending";
 import { sampleUsers } from "./data/users";
 import { createPasswordCredential, normalizePhone, verifyPassword } from "./data/accountAuth";
 import { readUserState, reviewStudent, reviewRequesterAddress, saveUsers } from "./data/userVerification";
@@ -17,6 +18,12 @@ import {
   createPrivateFileUrl, persistAdminState, persistRequesterRequest, saveProfile, submitRemoteActivityResult,
   uploadPrivateFile,
 } from "./data/supabaseStore";
+
+function isProfileApproved(profile) {
+  if (profile.role === "student") return profile.verificationStatus === "approved";
+  if (profile.role === "requester") return profile.addressVerificationStatus === "approved";
+  return profile.role === "admin";
+}
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -48,7 +55,9 @@ function App() {
         const profile = await fetchProfile(data.session.user.id);
         const [users, operationData] = profile.role === "admin"
           ? await Promise.all([fetchUsers(), fetchNoncontactState(profile)])
-          : await Promise.all([Promise.resolve([profile]), fetchNoncontactState(profile)]);
+          : isProfileApproved(profile)
+            ? await Promise.all([Promise.resolve([profile]), fetchNoncontactState(profile)])
+            : [[profile], emptyNoncontactState];
         if (active) {
           setCurrentUser(profile);
           setUserState({ users, storageError: "" });
@@ -106,7 +115,10 @@ function App() {
       }
       setCurrentUser(user);
       setUserState({ users: [user], storageError: "" });
-      setOperationState({ data: await fetchNoncontactState(user), storageError: "" });
+      setOperationState({
+        data: isProfileApproved(user) ? await fetchNoncontactState(user) : emptyNoncontactState,
+        storageError: "",
+      });
       return { confirmationRequired: false };
     }
     if (userState.storageError) throw new Error(userState.storageError);
@@ -137,7 +149,9 @@ function App() {
       const user = await fetchProfile(data.user.id);
       const [users, operationData] = user.role === "admin"
         ? await Promise.all([fetchUsers(), fetchNoncontactState(user)])
-        : await Promise.all([Promise.resolve([user]), fetchNoncontactState(user)]);
+        : isProfileApproved(user)
+          ? await Promise.all([Promise.resolve([user]), fetchNoncontactState(user)])
+          : [[user], emptyNoncontactState];
       setCurrentUser(user);
       setUserState({ users, storageError: "" });
       setOperationState({ data: operationData, storageError: "" });
@@ -184,7 +198,10 @@ function App() {
     }
     setCurrentUser(user);
     setUserState({ users: [user], storageError: "" });
-    setOperationState({ data: await fetchNoncontactState(user), storageError: "" });
+    setOperationState({
+      data: isProfileApproved(user) ? await fetchNoncontactState(user) : emptyNoncontactState,
+      storageError: "",
+    });
   }
   async function submitStudentVerification(file) {
     const path = await uploadPrivateFile(file, currentUser.id, "verification");
@@ -379,7 +396,7 @@ function App() {
       desiredResult: fields.resultWanted,
       period: fields.period,
       note: fields.note || "",
-      ...(fields.who === "가족" ? { elderName: fields.elderName, ageGroup: fields.ageGroup } : { ageGroup: requesterProfile.ageGroup }),
+      ...(fields.who === "가족" ? { elderName: fields.elderName, ageGroup: fields.ageGroup } : {}),
     };
     const next = await updateOperation(requestId ? "revise-request" : "submit-request", {
       ...request,
@@ -403,6 +420,14 @@ function App() {
     onOpenFile={openPrivateFile}
     userStorageError={userState.storageError} storageError={operationState.storageError}
     onLogout={() => isSupabaseConfigured ? supabase.auth.signOut() : setCurrentUser(null)} />;
+  if (studentProfile && studentProfile.verificationStatus !== "approved") return <VerificationPending
+    profile={studentProfile}
+    onLogout={() => isSupabaseConfigured ? supabase.auth.signOut() : setCurrentUser(null)}
+  />;
+  if (requesterProfile && requesterProfile.addressVerificationStatus !== "approved") return <VerificationPending
+    profile={requesterProfile}
+    onLogout={() => isSupabaseConfigured ? supabase.auth.signOut() : setCurrentUser(null)}
+  />;
   if (!currentUser) return <LoginHome
     localMode={!isSupabaseConfigured}
     onEnterAdmin={enterDevelopmentAdmin}

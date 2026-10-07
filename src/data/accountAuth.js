@@ -43,6 +43,15 @@ export async function verifyPassword(password, salt, expectedHash) {
 
 export const normalizePhone = (phone) => phone.replace(/\D/g, "");
 
+export function phoneLoginEmail(phone) {
+  const digits = normalizePhone(phone);
+  if (!digits.startsWith("0") || digits.length < 10 || digits.length > 11) {
+    throw new Error("휴대전화 번호를 확인해주세요.");
+  }
+  const internationalDigits = `82${digits.slice(1)}`;
+  return `phone-${internationalDigits}@login.ieum.invalid`;
+}
+
 export function formatPhoneInput(value) {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   if (digits.length <= 3) return digits;

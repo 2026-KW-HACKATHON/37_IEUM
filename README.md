@@ -83,11 +83,11 @@ Supabase 미설정 상태에서는 로컬 브라우저 저장소 모드로 실�
    VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-or-anon-key
    ```
 
-3. Supabase SQL Editor에서 `supabase/migrations/`의 SQL 파일을 파일명 순서대로 실행합니다. 현재 초기 스키마와 활동 시작일 처리 마이그레이션이 포함되어 있습니다.
-4. Authentication에서 Phone provider와 OTP 정책을 설정합니다. 실제 문자 발송이 필요하면 Naver Cloud SENS와 Supabase Send SMS Hook을 설정하고 서버 비밀값을 Supabase secrets에 저장합니다. 비밀값을 `VITE_` 환경변수, 브라우저 코드, Git에 넣지 마세요.
+3. Supabase SQL Editor에서 `supabase/migrations/`의 SQL 파일을 파일명 순서대로 실행합니다. 초기 스키마, 활동 시작일 처리, SMS 없이 전화번호/비밀번호 로그인용 별칭을 저장하는 마이그레이션이 포함되어 있습니다.
+4. Authentication에서 **Email provider를 켜고 Confirm email을 끕니다.** 앱은 전화번호를 내부 로그인용 별칭 이메일로 변환해 이메일/비밀번호 인증을 사용하며 SMS를 보내지 않습니다. 전화번호는 프로필 연락처로 저장할 뿐 소유 여부를 확인하지 않습니다. Phone provider와 SMS 공급자(Twilio 등)는 설정하지 않아도 됩니다. Confirm email 설정 변경 후 새 가입으로 바로 로그인이 되는지 확인하세요.
 5. `vercel.json`은 `/admin` 경로를 앱으로 연결합니다. 사용자 링크는 배포 도메인의 `/`, 운영자 링크는 `/admin`입니다.
 6. 배포 호스트의 환경변수에 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`를 설정하고 `VITE_USE_LOCAL_STORAGE`는 설정하지 않거나 `false`로 둡니다. 환경변수 변경 후에는 새 빌드가 필요합니다. 호스트의 환경변수는 브라우저 번들에 포함되므로 publishable/anon key만 사용합니다.
-7. 운영자로 사용할 전화번호로 일반 계정을 만들고 SMS 인증을 완료합니다. 배포된 `/admin`에서는 운영자 ID `kwhack`으로 로그인하므로, 아래 SQL에서 해당 계정의 Auth 이메일을 로그인용 별칭으로 바꾸고 프로필을 운영자로 승격합니다. 전화번호는 실제 계정의 E.164 값으로 바꾸세요.
+7. 운영자로 사용할 전화번호와 비밀번호로 일반 계정을 만듭니다. SMS 인증은 없습니다. 배포된 `/admin`에서는 운영자 ID `kwhack`으로 로그인하므로, 아래 SQL에서 해당 계정의 Auth 이메일을 로그인용 별칭으로 바꾸고 프로필을 운영자로 승격합니다. 전화번호는 실제 계정의 E.164 값으로 바꾸세요.
 
    ```sql
    begin;
@@ -111,7 +111,7 @@ Supabase 미설정 상태에서는 로컬 브라우저 저장소 모드로 실�
 
 Supabase는 `/`와 `/admin`에서 공유됩니다. 경로는 진입 화면만 구분하며, 실제 운영자 접근은 데이터베이스 프로필 권한과 RLS 정책으로 제한해야 합니다.
 
-`/admin`은 아이디와 비밀번호를 받습니다. Supabase 배포에서는 `kwhack` 아이디가 Auth 이메일 별칭 `kwhack@ieum.invalid`로 연결되고, 해당 Auth 사용자의 `profiles.role`이 `admin`이어야 로그인할 수 있습니다. 비밀번호는 Supabase Auth가 검증합니다. Supabase 연결 정보가 없는 로컬 시연 모드에서는 `VITE_DEMO_ADMIN_ID`, `VITE_DEMO_ADMIN_PASSWORD` 환경변수로 데모 로그인을 설정할 수 있습니다. 데모 비밀번호는 Vite 빌드 결과에 포함되어 누구나 확인할 수 있으므로 실제 운영 데이터에 사용하지 마세요. 로컬 모드 데이터는 브라우저별로 분리되며 팀원 사이에 공유되지 않습니다.
+일반 계정은 입력한 전화번호를 내부 별칭(`phone-<국가번호와 번호>@login.ieum.invalid`)으로 바꿔 Supabase Email Auth를 사용합니다. 전화번호 소유 여부는 확인되지 않으므로 실제 연락 가능한 번호만 입력하도록 안내해야 합니다. 비밀번호 재설정 이메일은 별칭 주소로 전달되지 않으므로 분실 시 Supabase 관리자 화면에서 재설정해야 합니다. `/admin`은 아이디와 비밀번호를 받습니다. Supabase 배포에서는 `kwhack` 아이디가 Auth 이메일 별칭 `kwhack@ieum.invalid`로 연결되고, 해당 Auth 사용자의 `profiles.role`이 `admin`이어야 로그인할 수 있습니다. Supabase 연결 정보가 없는 로컬 시연 모드에서는 `VITE_DEMO_ADMIN_ID`, `VITE_DEMO_ADMIN_PASSWORD` 환경변수로 데모 로그인을 설정할 수 있습니다. 데모 비밀번호는 Vite 빌드 결과에 포함되어 누구나 확인할 수 있으므로 실제 운영 데이터에 사용하지 마세요. 로컬 모드 데이터는 브라우저별로 분리되며 팀원 사이에 공유되지 않습니다.
 
 ## 파일 및 개인정보
 

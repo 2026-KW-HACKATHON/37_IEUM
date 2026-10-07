@@ -4,7 +4,7 @@ import RequesterHome from "./pages/requester/RequesterHome";
 import LoginHome from "./pages/login/LoginHome";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import VerificationPending from "./components/VerificationPending";
-import { createPasswordCredential, normalizePhone, verifyPassword } from "./data/accountAuth";
+import { createPasswordCredential, normalizePhone, phoneLoginEmail, verifyPassword } from "./data/accountAuth";
 import { readUserState, reviewStudent, reviewRequesterAddress, saveUsers } from "./data/userVerification";
 import { readNoncontactState, saveNoncontactState, reviewRequest, registerVolunteerActivity,
   setRecruitment, assignVolunteer, releaseAssignment, saveGuidance, getAssignmentStatus,
@@ -95,12 +95,13 @@ function App() {
   async function registerUser(profile, password, verificationDocument) {
     if (isSupabaseConfigured) {
       const { data, error } = await supabase.auth.signUp({
-        phone: toSupabasePhone(profile.phone),
+        email: phoneLoginEmail(profile.phone),
         password,
         options: { data: {
           role: profile.role,
           requesterType: profile.requesterType,
           name: profile.name,
+          phone: toSupabasePhone(profile.phone),
           university: profile.university,
           ageGroup: profile.ageGroup,
           address: profile.address,
@@ -111,7 +112,9 @@ function App() {
       });
       if (error) throw new Error(error.message);
       if (!data.user) throw new Error("가입 사용자 정보를 받지 못했습니다.");
-      if (!data.session) return { confirmationRequired: true };
+      if (!data.session) {
+        throw new Error("Supabase에서 이메일 확인을 꺼야 가입 후 바로 로그인할 수 있습니다. Authentication 설정을 확인해주세요.");
+      }
       let user = await fetchProfile(data.user.id);
       if (verificationDocument) {
         try {
@@ -129,7 +132,7 @@ function App() {
         data: isProfileApproved(user) ? await fetchNoncontactState(user) : emptyNoncontactState,
         storageError: "",
       });
-      return { confirmationRequired: false };
+      return;
     }
     if (userState.storageError) throw new Error(userState.storageError);
     const phone = normalizePhone(profile.phone);
@@ -151,7 +154,7 @@ function App() {
   async function loginUser(phone, password) {
     if (isSupabaseConfigured) {
       const { data, error } = await supabase.auth.signInWithPassword({
-        phone: toSupabasePhone(phone),
+        email: phoneLoginEmail(phone),
         password,
       });
       if (error) throw new Error(error.message);
@@ -210,32 +213,6 @@ function App() {
     setCurrentUser(user);
     setUserState({ users, storageError: "" });
     setOperationState({ data: operationData, storageError: "" });
-  }
-  async function verifyPhone(phone, token, verificationDocument) {
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone: toSupabasePhone(phone),
-      token,
-      type: "sms",
-    });
-    if (error) throw new Error(error.message);
-    if (!data.user) throw new Error("휴대전화 인증 사용자 정보를 받지 못했습니다.");
-    let user = await fetchProfile(data.user.id);
-    if (verificationDocument) {
-      try {
-        const verificationDocumentPath = await uploadPrivateFile(verificationDocument, user.id, "verification");
-        user = { ...user, verificationDocumentPath };
-        await saveProfile(user);
-        setVerificationUploadError("");
-      } catch (failure) {
-        setVerificationUploadError(failure instanceof Error ? failure.message : "증빙 파일을 저장하지 못했습니다.");
-      }
-    }
-    setCurrentUser(user);
-    setUserState({ users: [user], storageError: "" });
-    setOperationState({
-      data: isProfileApproved(user) ? await fetchNoncontactState(user) : emptyNoncontactState,
-      storageError: "",
-    });
   }
   async function submitStudentVerification(file) {
     const path = await uploadPrivateFile(file, currentUser.id, "verification");
@@ -456,7 +433,6 @@ function App() {
     adminOnly={adminRoute}
     onLogin={loginUser}
     onRegister={registerUser}
-    onVerify={verifyPhone}
   />;
   if (currentUser?.role === "admin") return <AdminDashboard data={operationState.data} users={userState.users}
     onCommand={updateOperation} onVerificationChange={updateUserVerification}
@@ -478,7 +454,6 @@ function App() {
     adminOnly={adminRoute}
     onLogin={loginUser}
     onRegister={registerUser}
-    onVerify={verifyPhone}
   />;
   if (currentUser.role === "student") return <StudentHome
     profile={currentUser}

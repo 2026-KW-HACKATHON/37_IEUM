@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /* ─────────────────────────────────────────────
    이음(IEUM) · 의뢰자(Requester) 화면
@@ -7,11 +7,11 @@ import { useEffect, useState } from "react";
    ───────────────────────────────────────────── */
 
 // 의뢰자에게 보이는 5단계
-export const STAGES = ["요청 접수", "운영자 검토 중", "모집 중", "진행 중", "완료"];
+const STAGES = ["요청 접수", "운영자 검토 중", "모집 중", "진행 중", "완료"];
 
 // 공통 상태(요청 접수 → … → 인증 완료)를 의뢰자 단계로 변환
 // 봉사자 배정~승인은 모두 "진행 중", 운영자 인증이 끝나야 "완료"
-export const toStage = (status) =>
+const toStage = (status) =>
   ({
     "요청 접수": "요청 접수",
     "운영자 검토": "운영자 검토 중",
@@ -123,14 +123,17 @@ export default function RequesterHome({
   profile,
   requests: savedRequests,
   onSubmitRequest,
+  onOpenFile,
   onLogout,
 }) {
-  const [requests, setRequests] = useState(() => savedRequests ?? SAMPLE
+  const [localRequests, setLocalRequests] = useState(() => SAMPLE
     .filter((request) => request.who === (requesterType === "family" ? "가족" : "본인"))
     .map((request) => requesterType === "self" && profile?.ageGroup
       ? { ...request, ageGroup: profile.ageGroup }
       : request));
+  const requests = savedRequests ?? localRequests;
   const [submitError, setSubmitError] = useState("");
+  const [fileError, setFileError] = useState("");
   const [view, setView] = useState("home"); // home | form | detail
   const [selectedId, setSelectedId] = useState(null);
   const [tab, setTab] = useState("전체");
@@ -141,10 +144,6 @@ export default function RequesterHome({
   }));
   const [step, setStep] = useState(1);
   const [editingId, setEditingId] = useState(null);
-
-  useEffect(() => {
-    if (savedRequests) setRequests(savedRequests);
-  }, [savedRequests]);
 
   const selected = requests.find((r) => r.id === selectedId);
   const isDone = (r) => toStage(r.status) === "완료";
@@ -173,16 +172,16 @@ export default function RequesterHome({
     4: true,
   }[step];
 
-  const submit = () => {
+  const submit = async () => {
     const title = form.need.trim().slice(0, 24) || form.type;
     setSubmitError("");
     try {
-      const id = onSubmitRequest ? onSubmitRequest(form, editingId) : editingId || Date.now();
+      const id = onSubmitRequest ? await onSubmitRequest(form, editingId) : editingId || Date.now();
       const updated = { ...form, id, title, status: editingId ? "운영자 검토" : "요청 접수" };
       if (editingId) {
-        setRequests((rs) => rs.map((request) => request.id === editingId ? updated : request));
+        setLocalRequests((rs) => rs.map((request) => request.id === editingId ? updated : request));
       } else if (!savedRequests) {
-        setRequests((rs) => [updated, ...rs]);
+        setLocalRequests((rs) => [updated, ...rs]);
       }
       openDetail(id);
     } catch (error) {
@@ -389,9 +388,14 @@ export default function RequesterHome({
                     <p>{selected.result.summary}</p>
                     <p className="sub">{selected.result.log}</p>
                     <h4>학생 결과물</h4>
+                    {fileError && <p className="rq-alert" role="alert">{fileError}</p>}
                     <ul className="rq-files">
                       {selected.result.files.map((f) => (
-                        <li key={f.name}><span className="kind">{f.kind}</span>{f.name}<button className="rq-btn small">열기</button></li>
+                        <li key={f.name}><span className="kind">{f.kind}</span>{f.name}{f.path && <button type="button" className="rq-btn small" onClick={async () => {
+                          setFileError("");
+                          try { await onOpenFile(f.path); }
+                          catch (failure) { setFileError(failure instanceof Error ? failure.message : "파일을 열지 못했습니다."); }
+                        }}>열기</button>}</li>
                       ))}
                     </ul>
                     <p className="rq-note">운영자 검토와 인증이 끝난 결과물만 보여요.</p>

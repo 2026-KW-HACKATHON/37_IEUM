@@ -46,17 +46,17 @@ const ADMIN_CSS = `
 .ieum-admin ul,.ieum-admin ol{padding-left:22px}
 `;
 
-function AdminDashboard({ data, users, onCommand, onVerificationChange, onAddressVerificationChange, userStorageError, storageError, onLogout }) {
+function AdminDashboard({ data, users, onCommand, onVerificationChange, onAddressVerificationChange, onOpenFile, userStorageError, storageError, onLogout }) {
   const [view, setView] = useState("dashboard");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const menus = [["dashboard", "운영 현황"], ["requests", "의뢰 검토·봉사활동 등록"], ["volunteers", "봉사활동·모집·배정 관리"], ["submissions", "결과물 검토·내부 인증"], ["users", "사용자 관리"]];
-  function execute(command, payload) {
+  async function execute(command, payload) {
     setMessage("");
     setError("");
     try {
-      onCommand(command, payload);
-      setMessage("변경사항을 이 브라우저에 저장했습니다.");
+      await onCommand(command, payload);
+      setMessage("변경사항을 저장했습니다.");
       return true;
     } catch (failure) {
       setError(failure.message);
@@ -91,9 +91,9 @@ function AdminDashboard({ data, users, onCommand, onVerificationChange, onAddres
       </section>}
       {view === "requests" && <RequestManagement data={data} users={users} onCommand={execute} disabled={Boolean(storageError)} />}
       {view === "volunteers" && <VolunteerManagement data={data} users={users} onCommand={execute} disabled={Boolean(storageError)} userStorageError={userStorageError} />}
-      {view === "submissions" && <SubmissionManagement data={data} users={users} onCommand={execute} disabled={Boolean(storageError)} />}
+      {view === "submissions" && <SubmissionManagement data={data} users={users} onCommand={execute} onOpenFile={onOpenFile} disabled={Boolean(storageError)} />}
       {view === "users" && <UserManagement users={users} onVerificationChange={onVerificationChange}
-        onAddressVerificationChange={onAddressVerificationChange} storageError={userStorageError} />}
+        onAddressVerificationChange={onAddressVerificationChange} onOpenFile={onOpenFile} storageError={userStorageError} />}
     </main>
   </div>;
 }

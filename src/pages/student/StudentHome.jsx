@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 /**
  * 이음 · 홈 화면(대학생) — 매니패스트 와이어프레임 n12
@@ -19,7 +19,7 @@ import React, { useEffect, useState, useCallback } from "react";
  */
 
 // 이동 대상 (와이어프레임 노드 ID 대응). 실제 경로 매핑은 onNavigate 쪽에서 처리.
-export const ROUTE = {
+const ROUTE = {
   REQUEST_MAP: "requestMap",     // n14 의뢰 탐색 지도
   EVENT_LIST: "eventList",       // n51 지역활동 목록
   REPORT: "report",              // n49 생활불편 제보
@@ -42,7 +42,13 @@ function useHomeData(loadHome) {
       .catch(() => setState({ status: "error", data: null }));
   }, [loadHome]);
 
-  useEffect(reload, [reload]);
+  useEffect(() => {
+    let active = true;
+    loadHome()
+      .then((data) => { if (active) setState({ status: "ready", data }); })
+      .catch(() => { if (active) setState({ status: "error", data: null }); });
+    return () => { active = false; };
+  }, [loadHome]);
   return { ...state, reload, setData: (data) => setState({ status: "ready", data }) };
 }
 
@@ -71,12 +77,22 @@ const defaultOnNavigate = (route, params) => console.log("navigate:", route, par
 function StudentHome({
   loadHome = defaultLoadHome,
   onApply = defaultOnApply,
+  onSubmitResult,
+  onUploadFile,
+  onOpenFile,
+  onSubmitVerification,
+  verificationUploadError,
+  allowFileUpload,
   onNavigate = defaultOnNavigate,
   profile,
   onLogout,
 }) {
   const { status, data, reload, setData } = useHomeData(loadHome);
   const [pending, setPending] = useState(null); // 신청 처리 중인 의뢰 id
+  const [selectedActivityId, setSelectedActivityId] = useState(null);
+  const [actionError, setActionError] = useState("");
+  const [verificationError, setVerificationError] = useState("");
+  const [verificationMessage, setVerificationMessage] = useState("");
   const go = (route, params) => onNavigate?.(route, params);
 
   const apply = async (id) => {
@@ -87,9 +103,19 @@ function StudentHome({
       setData({
         ...data,
         requests: data.requests.map((r) => (r.id === id ? { ...r, applied: true } : r)),
+        activities: data.activities.map((activity) =>
+          activity.id === id ? { ...activity, applied: true, applicationStatus: "운영자 배정 대기" } : activity
+        ),
+        myApplications: [
+          ...(data.myApplications || []),
+          data.activities.find((activity) => activity.id === id)
+            ? { ...data.activities.find((activity) => activity.id === id), applicationStatus: "운영자 배정 대기" }
+            : null,
+        ].filter(Boolean),
       });
-    } catch {
-      alert("신청하지 못했어요. 잠시 후 다시 시도해 주세요.");
+      setActionError("");
+    } catch (failure) {
+      setActionError(failure instanceof Error ? failure.message : "신청하지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setPending(null);
     }
@@ -117,6 +143,32 @@ function StudentHome({
 
   const { user, summary, myActivities, requests } = data;
   const userName = profile?.name || user.name;
+  const selectedActivity = data.activities?.find((activity) => activity.id === selectedActivityId);
+
+  if (selectedActivityId) {
+    return (
+      <div className="rq-app ih">
+        <style>{css}</style>
+        {selectedActivity ? (
+          <StudentActivityDetail
+            activity={selectedActivity}
+            profile={profile}
+            actionError={actionError}
+            onBack={() => setSelectedActivityId(null)}
+            onSubmitResult={onSubmitResult}
+            onApply={onApply}
+            onUploadFile={onUploadFile}
+            onOpenFile={onOpenFile}
+            onLogout={onLogout}
+          />
+        ) : (
+          <main className="rq-main"><p role="alert">활동 정보를 찾을 수 없습니다.</p>
+            <button onClick={() => setSelectedActivityId(null)}>목록으로</button>
+          </main>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="rq-app ih">
@@ -134,11 +186,39 @@ function StudentHome({
           <div><small>인증 상태</small><b>검증 완료 {summary.verifiedCount}건</b></div>
         </section>
         {profile && profile.verificationStatus !== "approved" && (
-          <p className="rq-alert" role="status">
-            학생 증빙 검토 상태: {profile?.verificationStatus === "rejected" ? "반려" : "검증 대기"}.
-            승인 후 모집 중인 봉사활동에 신청할 수 있어요.
-          </p>
+          <>
+            <p className="rq-alert" role="status">
+              학생 증빙 검토 상태: {profile?.verificationStatus === "rejected" ? "반려" : "검증 대기"}.
+              승인 후 모집 중인 봉사활동에 신청할 수 있어요.
+            </p>
+            {profile.verificationStatus === "rejected"
+              ? <p className="ih-state" role="status">증빙 검토가 반려되었어요. 재검토가 필요하면 운영자에게 문의해 주세요.</p>
+              : profile.verificationDocumentPath
+                ? <p className="ih-state" role="status">재학 증빙을 제출했어요. 운영자 검토를 기다려 주세요.</p>
+                : allowFileUpload ? <form className="ih-submission" onSubmit={async (event) => {
+                event.preventDefault();
+                const file = new FormData(event.currentTarget).get("verificationFile");
+                setVerificationError("");
+                setVerificationMessage("");
+                try {
+                  await onSubmitVerification(file);
+                  setVerificationMessage("재학 증빙을 비공개 저장소에 제출했어요.");
+                } catch (failure) {
+                  setVerificationError(failure instanceof Error ? failure.message : "재학 증빙을 제출하지 못했어요.");
+                }
+              }}>
+                <label>재학 증빙 파일
+                  <input name="verificationFile" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required />
+                </label>
+                {verificationError && <p role="alert">{verificationError}</p>}
+                {verificationMessage && <p role="status">{verificationMessage}</p>}
+                {verificationUploadError && <p role="alert">{verificationUploadError}</p>}
+                <button className="ih-primary" type="submit">증빙 제출</button>
+                </form>
+                  : <p className="ih-state" role="status">실제 증빙 파일 보관은 Supabase 파일 저장소를 설정한 뒤 사용할 수 있어요.</p>}
+          </>
         )}
+        {actionError && <p className="rq-alert" role="alert">{actionError}</p>}
         <button className="ih-link" onClick={() => go(ROUTE.HOURS)}>봉사시간 내역 보기</button>
 
         <Section
@@ -147,8 +227,20 @@ function StudentHome({
           empty="진행 중인 활동이 없어요."
           render={(a) => (
             <div key={a.id} className="ih-item">
-              <div><b>{a.title}</b><small>{a.subtitle}</small></div>
-              <button onClick={() => go(ROUTE.ACTIVITY, { id: a.id })}>열기</button>
+              <div><b>{a.title}</b><small>{a.period} · {a.assignmentStatus}</small></div>
+              <button onClick={() => setSelectedActivityId(a.id)}>활동 상세</button>
+            </div>
+          )}
+        />
+
+        <Section
+          title="신청한 활동"
+          items={data.myApplications || []}
+          empty="운영자 배정을 기다리는 신청이 없어요."
+          render={(a) => (
+            <div key={a.id} className="ih-item">
+              <div><b>{a.title}</b><small>{a.period} · 운영자 배정 대기</small></div>
+              <button onClick={() => setSelectedActivityId(a.id)}>신청 상세</button>
             </div>
           )}
         />
@@ -159,14 +251,17 @@ function StudentHome({
           empty="현재 모집 중인 도움이 없어요."
           render={(r) => (
             <div key={r.id} className="ih-item">
-              <div onClick={() => go(ROUTE.REQUEST, { id: r.id })} role="button" tabIndex={0}>
+              <div>
                 <b>{r.title}</b>
                 {r.tags?.length > 0 && <small className="ih-category">{r.tags.join(" · ")}</small>}
                 {r.subtitle && <small>{r.subtitle}</small>}
               </div>
-              <button className="ih-primary" disabled={Boolean(profile && profile.verificationStatus !== "approved") || r.applied || pending === r.id} onClick={() => apply(r.id)}>
-                {r.applied ? "신청 완료" : "신청하기"}
-              </button>
+              <div className="ih-actions">
+                <button onClick={() => setSelectedActivityId(r.id)}>상세 보기</button>
+                <button className="ih-primary" disabled={Boolean(profile && profile.verificationStatus !== "approved") || r.applied || pending === r.id} onClick={() => apply(r.id)}>
+                  {r.applied ? "신청 완료" : pending === r.id ? "신청 중…" : "신청하기"}
+                </button>
+              </div>
             </div>
           )}
         />
@@ -174,6 +269,160 @@ function StudentHome({
         <button className="ih-link" onClick={() => go(ROUTE.SETTINGS)}>프로필·설정</button>
       </main>
     </div>
+  );
+}
+
+function StudentActivityDetail({ activity, profile, actionError, onBack, onSubmitResult, onApply, onUploadFile, onOpenFile, onLogout }) {
+  const [submissionError, setSubmissionError] = useState("");
+  const [submissionMessage, setSubmissionMessage] = useState("");
+  return (
+    <>
+      <header className="rq-header">
+        <button className="ih-back" type="button" onClick={onBack}>‹ 목록</button>
+        <span className="ih-role">대학생</span>
+        {onLogout && <button className="ih-logout" onClick={onLogout}>로그아웃</button>}
+      </header>
+      <main className="rq-main">
+        <section className="rq-hero">
+          <small>{activity.type}</small>
+          <h1>{activity.title}</h1>
+          <p>{activity.description}</p>
+        </section>
+        {actionError && <p className="rq-alert" role="alert">{actionError}</p>}
+        <section className="ih-detail-card">
+          <h2>활동 안내</h2>
+          <dl>
+            <dt>활동 대상</dt><dd>{activity.target}</dd>
+            <dt>활동 기간</dt><dd>{activity.period}</dd>
+            <dt>모집 상태</dt><dd>{activity.recruitmentOpen ? "모집 중" : activity.status}</dd>
+            <dt>모집 인원</dt><dd>{activity.capacity}명</dd>
+            <dt>필요한 역량</dt><dd>{activity.requirements}</dd>
+            <dt>필요한 결과물</dt><dd>{activity.resultType}</dd>
+            <dt>제출 증빙자료</dt><dd>{activity.evidence}</dd>
+            <dt>제출 기한</dt><dd>{activity.deadline}</dd>
+          </dl>
+        </section>
+        {activity.assignmentId ? (
+          <section className="ih-detail-card">
+            <h2>내 활동 · {activity.assignmentStatus}</h2>
+            <h3>사전교육 / 활동 안내</h3>
+            <dl>
+              <dt>활동 방법</dt><dd>{activity.guidance.method || "운영자 안내를 기다리고 있어요."}</dd>
+              <dt>주의사항</dt><dd>{activity.guidance.precautions || "운영자 안내를 기다리고 있어요."}</dd>
+              <dt>결과물 형식</dt><dd>{activity.guidance.resultFormat || activity.resultType}</dd>
+              <dt>증빙 방법</dt><dd>{activity.guidance.evidenceGuide || activity.evidence}</dd>
+              <dt>활동일지 작성</dt><dd>{activity.guidance.logGuide || "활동 내용과 소요 시간을 기록해 주세요."}</dd>
+            </dl>
+            {activity.submissions?.length > 0 && (() => {
+              const latest = activity.submissions.at(-1);
+              return <div className="ih-latest">
+                <h3>최근 제출 · {activity.assignmentStatus}</h3>
+                <p><b>결과물:</b> {latest.result}</p>
+                <p><b>활동일지:</b> {latest.activityLog}</p>
+                <p><b>증빙자료:</b> {latest.evidence}</p>
+                {latest.resultFilePath && <button type="button" onClick={async () => {
+                  try { await onOpenFile(latest.resultFilePath); }
+                  catch (failure) { setSubmissionError(failure instanceof Error ? failure.message : "결과물 파일을 열지 못했습니다."); }
+                }}>결과물 파일 열기</button>}
+                {latest.evidenceFilePath && <button type="button" onClick={async () => {
+                  try { await onOpenFile(latest.evidenceFilePath); }
+                  catch (failure) { setSubmissionError(failure instanceof Error ? failure.message : "증빙자료 파일을 열지 못했습니다."); }
+                }}>증빙자료 파일 열기</button>}
+                {latest.review && <p role={latest.review.decision === "보완 요청" ? "alert" : "status"}>
+                  운영자 검토: {latest.review.decision} · {latest.review.reason}
+                </p>}
+              </div>;
+            })()}
+            {["진행 중", "보완 요청"].includes(activity.assignmentStatus) && (
+              <form className="ih-submission" onSubmit={async (event) => {
+                event.preventDefault();
+                const form = event.currentTarget;
+                const fields = Object.fromEntries(new FormData(form));
+                fields.workedMinutes = Number(fields.workedMinutes);
+                setSubmissionError("");
+                setSubmissionMessage("");
+                try {
+                  const resultFile = fields.resultFile;
+                  const evidenceFile = fields.evidenceFile;
+                  delete fields.resultFile;
+                  delete fields.evidenceFile;
+                  if (resultFile?.size) {
+                    fields.resultFilePath = await onUploadFile(resultFile, "results");
+                    if (!fields.result.trim()) fields.result = resultFile.name;
+                  }
+                  if (evidenceFile?.size) {
+                    fields.evidenceFilePath = await onUploadFile(evidenceFile, "evidence");
+                    if (!fields.evidence.trim()) fields.evidence = evidenceFile.name;
+                  }
+                  await onSubmitResult(activity.assignmentId, fields);
+                  setSubmissionMessage("결과물을 제출했어요. 운영자 검토를 기다려 주세요.");
+                  form.reset();
+                } catch (failure) {
+                  setSubmissionError(failure instanceof Error ? failure.message : "결과물을 제출하지 못했어요.");
+                }
+              }}>
+                <h3>{activity.assignmentStatus === "보완 요청" ? "결과물 재제출" : "활동 결과 제출"}</h3>
+                {submissionError && <p role="alert">{submissionError}</p>}
+                {submissionMessage && <p role="status">{submissionMessage}</p>}
+                <label>결과물 파일명 또는 공유 링크
+                  <input name="result" maxLength="500" placeholder="예) 안내서.pdf 또는 공유 링크" />
+                </label>
+                <label>결과물 파일 업로드 (선택)
+                  <input name="resultFile" type="file" accept=".pdf,image/jpeg,image/png,image/webp,video/mp4" onChange={(event) => {
+                    const fileName = event.currentTarget.files?.[0]?.name;
+                    const resultInput = event.currentTarget.form?.elements.namedItem("result");
+                    if (fileName && resultInput && !resultInput.value) resultInput.value = fileName;
+                  }} />
+                </label>
+                <label>활동일지
+                  <textarea name="activityLog" required maxLength="3000" rows="4" placeholder="수행한 활동과 진행 내용을 기록해 주세요." />
+                </label>
+                <label>증빙자료 설명 또는 보관 링크
+                  <input name="evidence" maxLength="1000" placeholder="예) 제작 과정 사진 파일명 또는 링크" />
+                </label>
+                <label>증빙자료 파일 업로드 (선택)
+                  <input name="evidenceFile" type="file" accept=".pdf,image/jpeg,image/png,image/webp,video/mp4" onChange={(event) => {
+                    const fileName = event.currentTarget.files?.[0]?.name;
+                    const evidenceInput = event.currentTarget.form?.elements.namedItem("evidence");
+                    if (fileName && evidenceInput && !evidenceInput.value) evidenceInput.value = fileName;
+                  }} />
+                </label>
+                <label>활동 시간 (분)
+                  <input name="workedMinutes" type="number" min="1" step="1" required />
+                </label>
+                <p className="ih-upload-note">파일은 비공개 저장소로 업로드됩니다. 파일당 최대 10MB이며 PDF, JPG, PNG, WEBP, MP4 형식을 지원합니다.</p>
+                <button className="ih-primary" type="submit">제출하기</button>
+              </form>
+            )}
+            {["봉사자 배정", "결과물 제출", "검토 중", "재제출", "승인", "인증 완료"].includes(activity.assignmentStatus) &&
+              !["진행 중", "보완 요청"].includes(activity.assignmentStatus) &&
+              <p className="ih-state" role="status">{activity.assignmentStatus === "봉사자 배정"
+                ? "운영자가 활동을 시작 처리하고 안내를 마치면 활동 결과를 제출할 수 있어요."
+                : activity.assignmentStatus === "승인"
+                  ? "결과물이 승인되었어요. 운영자의 최종 인증을 기다리고 있습니다."
+                  : activity.assignmentStatus === "인증 완료"
+                    ? "활동 인증이 완료되었어요."
+                    : "제출한 결과물을 운영자가 검토하고 있어요."}</p>}
+          </section>
+        ) : activity.applied ? (
+          <p className="ih-state" role="status">참여 신청이 완료되었어요. 운영자 배정을 기다리고 있습니다.</p>
+        ) : (
+          <section className="ih-detail-card">
+            {profile?.verificationStatus !== "approved" && <p role="status">학생 증빙 검토 승인 후 신청할 수 있어요.</p>}
+            <button className="ih-primary" type="button" disabled={!activity.recruitmentOpen || (profile && profile.verificationStatus !== "approved")}
+              onClick={async () => {
+                setSubmissionError("");
+                try {
+                  await onApply(activity.id);
+                } catch (failure) {
+                  setSubmissionError(failure instanceof Error ? failure.message : "신청하지 못했어요.");
+                }
+              }}>참여 신청하기</button>
+            {submissionError && <p role="alert">{submissionError}</p>}
+          </section>
+        )}
+      </main>
+    </>
   );
 }
 
@@ -204,6 +453,22 @@ const css = `
 .ih .ih-item b{display:block;font-size:16px}
 .ih .ih-item small{display:block;color:var(--sub);font-size:14px;margin-top:3px}
 .ih .ih-item button{flex-shrink:0;font-size:14px}
+.ih .ih-actions{display:flex;gap:6px}
+.ih .ih-actions button{font-size:13px;padding:8px}
+.ih .ih-back{margin-right:auto}
+.ih .ih-detail-card{padding:16px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.ih .ih-detail-card h2,.ih .ih-detail-card h3{margin:0 0 12px;font-size:18px}
+.ih .ih-detail-card h3{margin-top:16px;font-size:16px}
+.ih .ih-detail-card dl{display:grid;grid-template-columns:minmax(90px, auto) 1fr;gap:8px 12px;margin:0}
+.ih .ih-detail-card dt{color:var(--sub)}
+.ih .ih-detail-card dd{margin:0;overflow-wrap:anywhere}
+.ih .ih-latest{margin-top:16px;padding:12px;border-radius:10px;background:var(--bg)}
+.ih .ih-latest p{margin:6px 0;overflow-wrap:anywhere}
+.ih .ih-submission{display:grid;gap:12px;margin-top:16px}
+.ih .ih-submission label{display:grid;gap:6px;font-weight:600}
+.ih .ih-submission input,.ih .ih-submission textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);font:inherit}
+.ih .ih-submission input[type="file"]{padding:8px}
+.ih .ih-upload-note,.ih .ih-state{margin:0;padding:12px;border-radius:10px;background:var(--bg);color:var(--sub);font-size:14px}
 .ih .ih-item .ih-primary{background:var(--ink);border-color:var(--ink);color:#fff}
 .ih .ih-item .ih-category{color:var(--brand);font-weight:700}
 .ih .ih-empty{color:var(--sub);font-size:15px;background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:18px;margin:0}

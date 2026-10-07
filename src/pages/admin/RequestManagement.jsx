@@ -4,14 +4,15 @@ import { requestStatuses, volunteerTypes } from "../../data/noncontact";
 function RequestManagement({ data, users, onCommand, disabled }) {
   const [filter, setFilter] = useState("전체");
   const requests = data.requests.filter((request) => filter === "전체" || request.status === filter);
-  function submit(event, command, requestId) {
+  async function submit(event, command, requestId) {
     event.preventDefault();
-    const fields = Object.fromEntries(new FormData(event.currentTarget));
+    const form = event.currentTarget;
+    const fields = Object.fromEntries(new FormData(form));
     if (command === "register") {
       fields.capacity = Number(fields.capacity);
       fields.institutionApproved = fields.institutionApproved === "on";
     }
-    if (onCommand(command, { requestId, ...fields })) event.currentTarget.reset();
+    if (await onCommand(command, { requestId, ...fields })) form.reset();
   }
   return <section>
     <h2>의뢰 검토·봉사활동 등록</h2>
@@ -36,7 +37,8 @@ function RequestManagement({ data, users, onCommand, disabled }) {
             {requester?.ageGroup && <><dt>가입 연령대</dt><dd>{requester.ageGroup}</dd></>}
             <dt>의뢰 대상</dt><dd>{request.target}</dd><dt>필요한 도움</dt><dd>{request.description}</dd>
             <dt>어르신 상황</dt><dd>{request.situation}</dd><dt>희망 결과물</dt><dd>{request.desiredResult}</dd>
-            <dt>희망 기간</dt><dd>{request.period}</dd></dl>
+            <dt>희망 기간</dt><dd>{request.period}</dd>
+            {request.note && <><dt>기타 전달사항</dt><dd>{request.note}</dd></>}</dl>
           {!activity && ["요청 접수", "운영자 검토"].includes(request.status) && <form onSubmit={(event) => submit(event, "request-review", request.id)}>
             <label htmlFor={`decision-${request.id}`}>의뢰 검토 결과 </label>
             <select id={`decision-${request.id}`} name="decision" required disabled={disabled}>

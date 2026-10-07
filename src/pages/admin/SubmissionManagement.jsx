@@ -1,13 +1,15 @@
 import { useState } from "react";
 
-function SubmissionManagement({ data, users, onCommand, disabled }) {
+function SubmissionManagement({ data, users, onCommand, onOpenFile, disabled }) {
   const [filter, setFilter] = useState("전체");
+  const [fileError, setFileError] = useState("");
   const assignments = data.assignments.filter((item) => filter === "전체" || item.status === filter);
-  function submit(event, command, assignmentId) {
+  async function submit(event, command, assignmentId) {
     event.preventDefault();
-    const fields = Object.fromEntries(new FormData(event.currentTarget));
+    const form = event.currentTarget;
+    const fields = Object.fromEntries(new FormData(form));
     if (command === "result-review") fields.recognizedMinutes = fields.recognizedMinutes === "" ? NaN : Number(fields.recognizedMinutes);
-    if (onCommand(command, { assignmentId, ...fields })) event.currentTarget.reset();
+    if (await onCommand(command, { assignmentId, ...fields })) form.reset();
   }
   return <section>
     <h2>결과물 검토·내부 인증</h2>
@@ -33,9 +35,20 @@ function SubmissionManagement({ data, users, onCommand, disabled }) {
             <dl><dt>결과물 / 파일 참조</dt><dd>{submission.result}</dd><dt>활동일지</dt><dd>{submission.activityLog}</dd>
               <dt>증빙자료</dt><dd>{submission.evidence}</dd><dt>제출 활동 시간</dt><dd>{submission.workedMinutes}분</dd>
               <dt>제출 시각</dt><dd>{new Date(submission.submittedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}</dd></dl>
+            {fileError && <p role="alert">{fileError}</p>}
+            {submission.resultFilePath && <button type="button" onClick={async () => {
+              setFileError("");
+              try { await onOpenFile(submission.resultFilePath); }
+              catch (failure) { setFileError(failure instanceof Error ? failure.message : "결과물 파일을 열지 못했습니다."); }
+            }}>결과물 파일 열기</button>}
+            {submission.evidenceFilePath && <button type="button" onClick={async () => {
+              setFileError("");
+              try { await onOpenFile(submission.evidenceFilePath); }
+              catch (failure) { setFileError(failure instanceof Error ? failure.message : "증빙자료 파일을 열지 못했습니다."); }
+            }}>증빙자료 파일 열기</button>}
             {submission.review && <p>검토 결과: {submission.review.decision} · 사유: {submission.review.reason} · 내부 검토 시간: {submission.review.recognizedMinutes}분</p>}
           </section>)}
-          {["결과물 제출", "재제출"].includes(assignment.status) && <button type="button" disabled={disabled} onClick={() => onCommand("begin-review", { assignmentId: assignment.id })}>결과 검토 시작</button>}
+          {["결과물 제출", "재제출"].includes(assignment.status) && <button type="button" disabled={disabled} onClick={async () => onCommand("begin-review", { assignmentId: assignment.id })}>결과 검토 시작</button>}
           {assignment.status === "검토 중" && <form onSubmit={(event) => submit(event, "result-review", assignment.id)}>
             <label htmlFor={`result-${assignment.id}`}>결과 검토 결정 </label><select id={`result-${assignment.id}`} name="decision" required disabled={disabled}><option value="">선택해주세요</option><option>승인</option><option>보완 요청</option></select>
             <div><label htmlFor={`reason-${assignment.id}`}>결과 검토 사유 / 보완 내용 </label><textarea id={`reason-${assignment.id}`} name="reason" required disabled={disabled} /></div>

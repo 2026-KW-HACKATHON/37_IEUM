@@ -1,0 +1,209 @@
+import { supabase } from "./supabaseClient";
+
+export const emptyNoncontactState = {
+  requests: [],
+  activities: [],
+  applications: [],
+  assignments: [],
+};
+
+function throwIfError({ error }) {
+  if (error) throw new Error(error.message || "Supabase 요청에 실패했습니다.");
+}
+
+function profileFromRow(row) {
+  return {
+    ...row.profile_data,
+    id: row.id,
+    role: row.role,
+    requesterType: row.requester_type || undefined,
+    name: row.name,
+    phone: row.phone || "",
+    university: row.university || "",
+    ageGroup: row.age_group || "",
+    address: row.address || "",
+    addressZonecode: row.address_zonecode || "",
+    verificationStatus: row.verification_status || undefined,
+    verificationSubmittedAt: row.verification_submitted_at || undefined,
+    verificationSummary: row.verification_summary || undefined,
+    verificationDocumentName: row.verification_document_name || undefined,
+    addressVerificationStatus: row.address_verification_status || undefined,
+    addressSubmittedAt: row.address_submitted_at || undefined,
+    joinedAt: row.joined_at,
+  };
+}
+
+function profileToRow(user) {
+  const {
+    id, role, requesterType, name, phone, university, ageGroup, address,
+    addressZonecode, verificationStatus, verificationSubmittedAt,
+    verificationSummary, verificationDocumentName, addressVerificationStatus,
+    addressSubmittedAt, joinedAt, ...profileData
+  } = user;
+  return {
+    id, role, requester_type: requesterType || null, name, phone: phone || null,
+    university: university || null, age_group: ageGroup || null,
+    address: address || null, address_zonecode: addressZonecode || null,
+    verification_status: verificationStatus || null,
+    verification_submitted_at: verificationSubmittedAt || null,
+    verification_summary: verificationSummary || null,
+    verification_document_name: verificationDocumentName || null,
+    address_verification_status: addressVerificationStatus || null,
+    address_submitted_at: addressSubmittedAt || null,
+    joined_at: joinedAt || new Date().toISOString().slice(0, 10),
+    profile_data: profileData,
+  };
+}
+
+export async function fetchProfile(userId) {
+  const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
+  if (error) throw new Error(error.message || "사용자 프로필을 불러오지 못했습니다.");
+  return profileFromRow(data);
+}
+
+export async function fetchUsers() {
+  const { data, error } = await supabase.from("profiles").select("*").order("created_at");
+  if (error) throw new Error(error.message || "사용자 목록을 불러오지 못했습니다.");
+  return data.map(profileFromRow);
+}
+
+export async function saveProfile(profile) {
+  const { error } = await supabase.from("profiles").update(profileToRow(profile)).eq("id", profile.id);
+  if (error) throw new Error(error.message || "프로필을 저장하지 못했습니다.");
+}
+
+export async function fetchNoncontactState() {
+  const [requestsResult, activitiesResult, applicationsResult, assignmentsResult] = await Promise.all([
+    supabase.from("requests").select("id,requester_id,status,data"),
+    supabase.from("activities").select("id,request_id,status,recruitment_open,capacity,data"),
+    supabase.from("applications").select("id,activity_id,student_id,applied_at,data"),
+    supabase.from("assignments").select("id,activity_id,student_id,status,data"),
+  ]);
+  [requestsResult, activitiesResult, applicationsResult, assignmentsResult].forEach(throwIfError);
+
+  return {
+    requests: requestsResult.data.map(({ data }) => data),
+    activities: activitiesResult.data.map(({ data, ...row }) => ({
+      ...data,
+      id: row.id,
+      requestId: row.request_id,
+      status: row.status,
+      recruitmentOpen: row.recruitment_open,
+      capacity: row.capacity,
+    })),
+    applications: applicationsResult.data.map(({ data, ...row }) => ({
+      ...data,
+      id: row.id,
+      activityId: row.activity_id,
+      studentId: row.student_id,
+      appliedAt: row.applied_at,
+    })),
+    assignments: assignmentsResult.data.map(({ data, ...row }) => ({
+      ...data,
+      id: row.id,
+      activityId: row.activity_id,
+      studentId: row.student_id,
+      status: row.status,
+    })),
+  };
+}
+
+function requestRow(request) {
+  return {
+    id: request.id,
+    requester_id: request.requesterId,
+    status: request.status,
+    data: request,
+  };
+}
+
+function activityRow(activity) {
+  return {
+    id: activity.id,
+    request_id: activity.requestId,
+    status: activity.status,
+    recruitment_open: activity.recruitmentOpen,
+    capacity: activity.capacity,
+    data: activity,
+  };
+}
+
+function applicationRow(application) {
+  return {
+    id: application.id,
+    activity_id: application.activityId,
+    student_id: application.studentId,
+    applied_at: application.appliedAt,
+    data: { isDemo: false },
+  };
+}
+
+function assignmentRow(assignment) {
+  return {
+    id: assignment.id,
+    activity_id: assignment.activityId,
+    student_id: assignment.studentId,
+    status: assignment.status,
+    data: assignment,
+  };
+}
+
+export async function persistAdminState(state) {
+  const { error } = await supabase.rpc("admin_replace_ieum_state", {
+    p_requests: state.requests.filter((item) => !item.isDemo).map(requestRow),
+    p_activities: state.activities.filter((item) => !item.isDemo).map(activityRow),
+    p_applications: state.applications.filter((item) => !item.isDemo).map(applicationRow),
+    p_assignments: state.assignments.filter((item) => !item.isDemo).map(assignmentRow),
+  });
+  if (error) {
+    throw new Error(error.message || "운영 변경사항을 원자적으로 저장하지 못했습니다.");
+  }
+}
+
+export async function persistRequesterRequest(request) {
+  const { error } = await supabase.from("requests").upsert(requestRow(request));
+  if (error) throw new Error(error.message || "의뢰를 저장하지 못했습니다.");
+}
+
+export async function applyToRemoteActivity(activityId) {
+  const { error } = await supabase.rpc("apply_to_ieum_activity", { p_activity_id: activityId });
+  if (error) throw new Error(error.message || "활동을 신청하지 못했습니다.");
+}
+
+export async function submitRemoteActivityResult(assignmentId, fields) {
+  const { error } = await supabase.rpc("submit_ieum_activity_result", {
+    p_assignment_id: assignmentId,
+    p_result: fields.result,
+    p_activity_log: fields.activityLog,
+    p_evidence: fields.evidence,
+    p_worked_minutes: fields.workedMinutes,
+    p_result_file_path: fields.resultFilePath || null,
+    p_evidence_file_path: fields.evidenceFilePath || null,
+  });
+  if (error) throw new Error(error.message || "활동 결과를 제출하지 못했습니다.");
+}
+
+export async function uploadPrivateFile(file, userId, category) {
+  if (!supabase) throw new Error("Supabase 파일 저장소 설정이 필요합니다.");
+  if (!(file instanceof File)) throw new Error("업로드할 파일을 선택해주세요.");
+  if (file.size === 0 || file.size > 10 * 1024 * 1024) {
+    throw new Error("파일은 10MB 이하의 빈 파일이 아닌 자료만 업로드할 수 있습니다.");
+  }
+  const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp", "video/mp4"]);
+  if (!allowedTypes.has(file.type)) throw new Error("PDF, JPG, PNG, WEBP, MP4 파일만 업로드할 수 있습니다.");
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${userId}/${category}/${crypto.randomUUID()}-${safeName}`;
+  const { error } = await supabase.storage.from("ieum-private").upload(path, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+  if (error) throw new Error(error.message || "비공개 파일 저장에 실패했습니다.");
+  return path;
+}
+
+export async function createPrivateFileUrl(path) {
+  if (!supabase) throw new Error("Supabase 파일 저장소 설정이 필요합니다.");
+  const { data, error } = await supabase.storage.from("ieum-private").createSignedUrl(path, 60);
+  if (error) throw new Error(error.message || "비공개 파일 주소를 만들지 못했습니다.");
+  return data.signedUrl;
+}

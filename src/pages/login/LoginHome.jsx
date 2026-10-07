@@ -41,8 +41,8 @@ const CSS = `
 .rq-welcome .rq-hero{padding-top:clamp(36px,8vh,76px);padding-bottom:clamp(36px,8vh,76px)}
 `;
 
-export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin, startupError, localMode }) {
-  const [mode, setMode] = useState("welcome");
+export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin, startupError, localMode, adminOnly = false }) {
+  const [mode, setMode] = useState(adminOnly ? "login" : "welcome");
   const [role, setRole] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -121,18 +121,18 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
         {mode === "welcome" ? (
           <>
             <section className="rq-hero">
-              <h1>월계 이음에 오신 걸 환영해요.</h1>
-              <p>로그인하거나 회원가입하고, 필요한 도움을 이어서 시작해 보세요.</p>
+              <h1>{adminOnly ? "이음 운영자 화면" : "월계 이음에 오신 걸 환영해요."}</h1>
+              <p>{adminOnly ? "운영자 계정으로 로그인해 주세요." : "로그인하거나 회원가입하고, 필요한 도움을 이어서 시작해 보세요."}</p>
             </section>
             <button className="rq-btn primary big" type="button" onClick={() => setMode("login")}>로그인</button>
-            <button className="rq-btn big" type="button" onClick={() => setMode("signup")}>회원가입</button>
-            {localMode && <button className="rq-btn big" type="button" onClick={onEnterAdmin}>개발용 운영자 화면</button>}
+            {!adminOnly && <button className="rq-btn big" type="button" onClick={() => setMode("signup")}>회원가입</button>}
+            {adminOnly && localMode && <button className="rq-btn big" type="button" onClick={onEnterAdmin}>로컬 개발용 운영자 화면</button>}
           </>
         ) : (
           <>
             <section className="rq-hero">
-              <h1>{confirmationRequired ? "휴대전화 인증" : mode === "signup" ? "이음 회원가입" : "이음 로그인"}</h1>
-              <p>{confirmationRequired ? "문자로 받은 인증번호를 입력해 가입을 완료해 주세요." : mode === "signup" ? "함께할 유형을 선택하고 필요한 정보를 입력해 주세요." : "가입한 휴대전화 번호와 비밀번호를 입력해 주세요."}</p>
+              <h1>{confirmationRequired ? "휴대전화 인증" : mode === "signup" ? "이음 회원가입" : adminOnly ? "운영자 로그인" : "이음 로그인"}</h1>
+              <p>{confirmationRequired ? "문자로 받은 인증번호를 입력해 가입을 완료해 주세요." : mode === "signup" ? "함께할 유형을 선택하고 필요한 정보를 입력해 주세요." : adminOnly ? "운영자 계정으로 로그인해 주세요." : "가입한 휴대전화 번호와 비밀번호를 입력해 주세요."}</p>
             </section>
 
             {!confirmationRequired && mode === "signup" && <div className="rq-entry-options" role="group" aria-label="회원 유형">
@@ -221,9 +221,10 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
                   </>}
 
                   {error && <p className="rq-alert" role="alert">{error}</p>}
-                  <button className="rq-btn primary big" type="submit" disabled={confirmationRequired ? otp.length !== 6 : !canSubmit}>{confirmationRequired ? "인증하고 가입 완료" : mode === "signup" ? "가입 신청하기" : "로그인"}</button>
+                  <button className="rq-btn primary big" type="submit" disabled={confirmationRequired ? otp.length !== 6 : !canSubmit}>{confirmationRequired ? "인증하고 가입 완료" : mode === "signup" ? "가입 신청하기" : adminOnly ? "운영자 로그인" : "로그인"}</button>
                 </div>
               </form>
+              {adminOnly && localMode && <button className="rq-btn big" type="button" onClick={onEnterAdmin}>로컬 개발용 운영자 화면</button>}
           </>
         )}
       </main>

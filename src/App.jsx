@@ -23,7 +23,19 @@ function isProfileApproved(profile) {
   return profile.role === "admin";
 }
 
+function RouteNotice({ adminRoute, onLogout }) {
+  return (
+    <main style={{ maxWidth: 480, minHeight: "100vh", margin: "0 auto", padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16, color: "#25404A", background: "#FFF9F4" }}>
+      <h1>{adminRoute ? "운영자 전용 주소입니다." : "운영자 계정으로 로그인되어 있어요."}</h1>
+      <p>{adminRoute ? "운영자 계정으로 로그인해 주세요." : "운영자 화면은 전용 주소에서 이용해 주세요."}</p>
+      <a href={adminRoute ? "/" : "/admin"}>{adminRoute ? "사용자 화면으로 이동" : "운영자 화면으로 이동"}</a>
+      <button type="button" onClick={onLogout}>로그아웃</button>
+    </main>
+  );
+}
+
 function App() {
+  const adminRoute = /^\/admin\/?$/.test(window.location.pathname);
   const [currentUser, setCurrentUser] = useState(null);
   const [verificationUploadError, setVerificationUploadError] = useState("");
   const [appReady, setAppReady] = useState(!isSupabaseConfigured);
@@ -407,10 +419,17 @@ function App() {
     return requestId || next.requests[0].id;
   };
   if (!appReady) return <main className="rq-main"><p>이음 서비스 연결 중…</p></main>;
+  if (currentUser && ((currentUser.role === "admin") !== adminRoute)) {
+    return <RouteNotice
+      adminRoute={adminRoute}
+      onLogout={() => isSupabaseConfigured ? supabase.auth.signOut() : setCurrentUser(null)}
+    />;
+  }
   if (startupError && !currentUser) return <LoginHome
     startupError={startupError}
     localMode={!isSupabaseConfigured}
     onEnterAdmin={enterDevelopmentAdmin}
+    adminOnly={adminRoute}
     onLogin={loginUser}
     onRegister={registerUser}
     onVerify={verifyPhone}
@@ -432,6 +451,7 @@ function App() {
   if (!currentUser) return <LoginHome
     localMode={!isSupabaseConfigured}
     onEnterAdmin={enterDevelopmentAdmin}
+    adminOnly={adminRoute}
     onLogin={loginUser}
     onRegister={registerUser}
     onVerify={verifyPhone}

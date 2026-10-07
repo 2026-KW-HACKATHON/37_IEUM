@@ -17,7 +17,7 @@
 - `VITE_USE_LOCAL_STORAGE`가 `true`가 아니고 `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`가 설정되어야 연결됩니다.
 - 사용자 인증·프로필, 요청·활동·신청·배정 및 비공개 파일을 원격 서비스에 저장합니다.
 - 초기 SQL 스키마와 이후 마이그레이션, RLS 정책, 필요한 Auth/SMS 설정을 Supabase 프로젝트에 적용해야 합니다.
-- 현재 UI에는 사용자/운영자 공용 앱 진입만 있습니다. 별도의 `/admin` 경로나 운영자 전용 URL은 아직 없습니다. Supabase 모드의 운영자 화면은 프로필의 `role = admin`으로 판별합니다. 로컬 모드의 개발용 운영자 진입은 테스트 편의를 위한 예외입니다.
+- 사용자 화면은 `/`, 운영자 로그인과 화면은 `/admin`에서 진입합니다. 두 경로는 같은 앱과 Supabase를 사용합니다. `/admin` 경로만으로 운영자 권한이 생기지 않으며, Supabase 모드에서는 프로필의 `role = admin`이 필요합니다. 로컬 모드의 개발용 운영자 진입 버튼은 `/admin`에서만 표시됩니다.
 
 ## 역할별 처리
 

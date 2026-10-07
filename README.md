@@ -87,19 +87,31 @@ Supabase 미설정 상태에서는 로컬 브라우저 저장소 모드로 실�
 4. Authentication에서 Phone provider와 OTP 정책을 설정합니다. 실제 문자 발송이 필요하면 Naver Cloud SENS와 Supabase Send SMS Hook을 설정하고 서버 비밀값을 Supabase secrets에 저장합니다. 비밀값을 `VITE_` 환경변수, 브라우저 코드, Git에 넣지 마세요.
 5. `vercel.json`은 `/admin` 경로를 앱으로 연결합니다. 사용자 링크는 배포 도메인의 `/`, 운영자 링크는 `/admin`입니다.
 6. 배포 호스트의 환경변수에 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`를 설정하고 `VITE_USE_LOCAL_STORAGE`는 설정하지 않거나 `false`로 둡니다. 환경변수 변경 후에는 새 빌드가 필요합니다. 호스트의 환경변수는 브라우저 번들에 포함되므로 publishable/anon key만 사용합니다.
-7. 먼저 신뢰할 수 있는 전화번호로 일반 계정을 만들고 소유자를 확인한 뒤, Supabase SQL Editor에서 해당 프로필을 운영자로 승격합니다.
+7. 운영자로 사용할 전화번호로 일반 계정을 만들고 SMS 인증을 완료합니다. 배포된 `/admin`에서는 운영자 ID `kwhack`으로 로그인하므로, 아래 SQL에서 해당 계정의 Auth 이메일을 로그인용 별칭으로 바꾸고 프로필을 운영자로 승격합니다. 전화번호는 실제 계정의 E.164 값으로 바꾸세요.
 
    ```sql
+   begin;
+
+   update auth.users u
+   set email = 'kwhack@ieum.invalid',
+       email_confirmed_at = coalesce(u.email_confirmed_at, now()),
+       updated_at = now()
+   from public.profiles p
+   where p.id = u.id
+     and p.phone = '+821012345678';
+
    update public.profiles
    set role = 'admin', requester_type = null
    where phone = '+821012345678';
+
+   commit;
    ```
 
-   위 번호는 실제 운영자 계정의 E.164 전화번호로 바꾸세요. 운영자 권한은 신뢰할 수 있는 계정에만 부여하고, `service_role` key나 데이터베이스 비밀번호는 클라이언트에 노출하지 마세요.
+   가입할 때 사용한 Supabase 비밀번호로 로그인합니다. 요청한 비밀번호를 쓰려면 계정 가입 시 설정하거나 Supabase Auth 사용자 관리에서 재설정하세요. `kwhack` 별칭은 실제 이메일 수신용이 아닌 로그인 식별자입니다. 운영자 권한은 신뢰할 수 있는 계정에만 부여하고, `service_role` key나 데이터베이스 비밀번호는 클라이언트에 노출하지 마세요.
 
 Supabase는 `/`와 `/admin`에서 공유됩니다. 경로는 진입 화면만 구분하며, 실제 운영자 접근은 데이터베이스 프로필 권한과 RLS 정책으로 제한해야 합니다.
 
-Supabase 연결 정보가 없는 로컬 시연 모드에서는 `/admin`의 휴대전화 대신 `VITE_DEMO_ADMIN_ID`, `VITE_DEMO_ADMIN_PASSWORD` 환경변수로 데모 운영자 로그인을 설정할 수 있습니다. 두 값은 Vite 빌드 결과에 포함되어 누구나 확인할 수 있으므로 실제 계정이나 개인정보가 있는 Supabase 운영 데이터에 사용하지 마세요. 로컬 모드 데이터는 브라우저별로 분리되며 팀원 사이에 공유되지 않습니다. Supabase가 연결되면 데모 아이디 로그인은 비활성화되고 프로필의 관리자 권한을 통한 로그인만 허용됩니다.
+`/admin`은 아이디와 비밀번호를 받습니다. Supabase 배포에서는 `kwhack` 아이디가 Auth 이메일 별칭 `kwhack@ieum.invalid`로 연결되고, 해당 Auth 사용자의 `profiles.role`이 `admin`이어야 로그인할 수 있습니다. 비밀번호는 Supabase Auth가 검증합니다. Supabase 연결 정보가 없는 로컬 시연 모드에서는 `VITE_DEMO_ADMIN_ID`, `VITE_DEMO_ADMIN_PASSWORD` 환경변수로 데모 로그인을 설정할 수 있습니다. 데모 비밀번호는 Vite 빌드 결과에 포함되어 누구나 확인할 수 있으므로 실제 운영 데이터에 사용하지 마세요. 로컬 모드 데이터는 브라우저별로 분리되며 팀원 사이에 공유되지 않습니다.
 
 ## 파일 및 개인정보
 

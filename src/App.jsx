@@ -178,20 +178,38 @@ function App() {
     }
     setCurrentUser(user);
   }
-  function enterDevelopmentAdmin(adminId, password) {
-    const expectedId = import.meta.env.VITE_DEMO_ADMIN_ID;
-    const expectedPassword = import.meta.env.VITE_DEMO_ADMIN_PASSWORD;
-    if (isSupabaseConfigured) throw new Error("아이디 로그인은 로컬 시연 모드에서만 사용할 수 있습니다.");
-    if (!expectedId || !expectedPassword) throw new Error("시연용 운영자 아이디와 비밀번호가 배포 환경변수에 설정되지 않았습니다.");
-    if (adminId !== expectedId || password !== expectedPassword) {
-      throw new Error("운영자 아이디 또는 비밀번호가 올바르지 않습니다.");
+  async function loginAdmin(adminId, password) {
+    if (!isSupabaseConfigured) {
+      const expectedId = import.meta.env.VITE_DEMO_ADMIN_ID || "kwhack";
+      const expectedPassword = import.meta.env.VITE_DEMO_ADMIN_PASSWORD;
+      if (!expectedPassword) throw new Error("시연용 운영자 비밀번호가 로컬 환경변수에 설정되지 않았습니다.");
+      if (adminId !== expectedId || password !== expectedPassword) {
+        throw new Error("운영자 아이디 또는 비밀번호가 올바르지 않습니다.");
+      }
+      setCurrentUser({
+        id: "development-admin",
+        role: "admin",
+        name: adminId,
+        isDemo: true,
+      });
+      return;
     }
-    setCurrentUser({
-      id: "development-admin",
-      role: "admin",
-      name: adminId,
-      isDemo: true,
+    if (adminId !== "kwhack") throw new Error("운영자 아이디 또는 비밀번호가 올바르지 않습니다.");
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: "kwhack@ieum.invalid",
+      password,
     });
+    if (error) throw new Error(error.message);
+    if (!data.user) throw new Error("운영자 로그인 사용자 정보를 받지 못했습니다.");
+    const user = await fetchProfile(data.user.id);
+    if (user.role !== "admin") {
+      await supabase.auth.signOut();
+      throw new Error("이 계정에는 운영자 권한이 없습니다.");
+    }
+    const [users, operationData] = await Promise.all([fetchUsers(), fetchNoncontactState(user)]);
+    setCurrentUser(user);
+    setUserState({ users, storageError: "" });
+    setOperationState({ data: operationData, storageError: "" });
   }
   async function verifyPhone(phone, token, verificationDocument) {
     const { data, error } = await supabase.auth.verifyOtp({
@@ -434,7 +452,7 @@ function App() {
   if (startupError && !currentUser) return <LoginHome
     startupError={startupError}
     localMode={!isSupabaseConfigured}
-    onEnterAdmin={enterDevelopmentAdmin}
+    onAdminLogin={loginAdmin}
     adminOnly={adminRoute}
     onLogin={loginUser}
     onRegister={registerUser}
@@ -456,7 +474,7 @@ function App() {
   />;
   if (!currentUser) return <LoginHome
     localMode={!isSupabaseConfigured}
-    onEnterAdmin={enterDevelopmentAdmin}
+    onAdminLogin={loginAdmin}
     adminOnly={adminRoute}
     onLogin={loginUser}
     onRegister={registerUser}

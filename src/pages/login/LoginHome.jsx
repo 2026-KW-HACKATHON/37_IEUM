@@ -53,7 +53,7 @@ const CSS = `
 @media(min-width:600px){.rq-app{box-shadow:0 0 48px #25404A12}}
 `;
 
-export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin, startupError, localMode, adminOnly = false }) {
+export default function LoginHome({ onLogin, onRegister, onVerify, onAdminLogin, startupError, localMode, adminOnly = false }) {
   const [mode, setMode] = useState(adminOnly ? "login" : "welcome");
   const [role, setRole] = useState("");
   const [name, setName] = useState("");
@@ -73,9 +73,9 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
 
   const isStudent = role === "student";
   const isRequester = role === "self" || role === "family";
-  const localAdminLogin = adminOnly && localMode;
+  const adminLogin = adminOnly;
   const canSubmit = Boolean(
-    (localAdminLogin ? adminId.trim() : phone.trim()) && password &&
+    (adminLogin ? adminId.trim() : phone.trim()) && password &&
     (mode === "login" || (password.length >= 8 && password === passwordConfirm && role && name.trim() && consented &&
       (isStudent ? university.trim() && document :
         isRequester ? address.trim() && (role !== "self" || ageGroup) : false)))
@@ -90,8 +90,8 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
         return;
       }
       if (mode === "login") {
-        if (localAdminLogin) {
-          await onEnterAdmin(adminId.trim(), password);
+        if (adminLogin) {
+          await onAdminLogin(adminId.trim(), password);
           return;
         }
         await onLogin(phone, password);
@@ -149,7 +149,7 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
           <>
             <section className="rq-hero">
               <h1>{confirmationRequired ? "휴대전화 인증" : mode === "signup" ? "이음 회원가입" : adminOnly ? "운영자 로그인" : "이음 로그인"}</h1>
-              <p>{confirmationRequired ? "문자로 받은 인증번호를 입력해 가입을 완료해 주세요." : mode === "signup" ? "함께할 유형을 선택하고 필요한 정보를 입력해 주세요." : localAdminLogin ? "시연용 운영자 아이디와 비밀번호를 입력해 주세요." : adminOnly ? "운영자 계정으로 로그인해 주세요." : "가입한 휴대전화 번호와 비밀번호를 입력해 주세요."}</p>
+              <p>{confirmationRequired ? "문자로 받은 인증번호를 입력해 가입을 완료해 주세요." : mode === "signup" ? "함께할 유형을 선택하고 필요한 정보를 입력해 주세요." : adminOnly ? "운영자 아이디와 비밀번호를 입력해 주세요." : "가입한 휴대전화 번호와 비밀번호를 입력해 주세요."}</p>
             </section>
 
             {!confirmationRequired && mode === "signup" && <div className="rq-entry-options" role="group" aria-label="회원 유형">
@@ -180,7 +180,7 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
                   {mode === "signup" && <label className="rq-field">이름
                     <input autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} />
                   </label>}
-                  {localAdminLogin
+                  {adminLogin
                     ? <label className="rq-field">운영자 아이디
                       <input autoComplete="username" required value={adminId} onChange={(event) => setAdminId(event.target.value)} />
                     </label>
@@ -188,7 +188,7 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
                       <input autoComplete="tel" type="tel" inputMode="numeric" required value={phone} onChange={(event) => setPhone(formatPhoneInput(event.target.value))} placeholder="010-0000-0000" />
                     </label>}
                   <label className="rq-field">비밀번호
-                    <input autoComplete={mode === "login" ? "current-password" : "new-password"} type="password" minLength={localAdminLogin ? undefined : 8} required value={password} onChange={(event) => setPassword(event.target.value)} />
+                    <input autoComplete={mode === "login" ? "current-password" : "new-password"} type="password" minLength={adminLogin ? undefined : 8} required value={password} onChange={(event) => setPassword(event.target.value)} />
                     {mode === "signup" && <span className="rq-note">8자 이상으로 입력해 주세요.</span>}
                   </label>
                   {mode === "signup" && <label className="rq-field">비밀번호 확인

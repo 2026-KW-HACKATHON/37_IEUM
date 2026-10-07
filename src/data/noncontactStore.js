@@ -93,6 +93,7 @@ export function submitRequesterRequest(state, request) {
   const desiredResult = requireText(request.desiredResult, "원하는 결과물을 선택해주세요.");
   const period = requireText(request.period, "희망 기간을 선택해주세요.");
   if (request.situation !== undefined && typeof request.situation !== "string") throw new Error("상황 설명을 확인해주세요.");
+  if (request.note !== undefined && typeof request.note !== "string") throw new Error("기타 전달사항을 확인해주세요.");
   const nextRequest = {
     id: `request-${id()}`,
     requesterId,
@@ -101,6 +102,7 @@ export function submitRequesterRequest(state, request) {
     type,
     description,
     situation: request.situation?.trim() ?? "",
+    note: request.note?.trim() ?? "",
     desiredResult,
     period,
     status: "요청 접수",

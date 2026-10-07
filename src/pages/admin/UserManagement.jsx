@@ -9,7 +9,7 @@ function getUserType(user) {
   return "역할 확인 필요";
 }
 
-function UserManagement({ users, onVerificationChange, onAddressVerificationChange, storageError }) {
+function UserManagement({ users, onVerificationChange, onAddressVerificationChange, onOpenFile, storageError }) {
   const [userFilter, setUserFilter] = useState("all");
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [verificationFilter, setVerificationFilter] = useState("all");
@@ -26,12 +26,12 @@ function UserManagement({ users, onVerificationChange, onAddressVerificationChan
     setErrorMessage("");
   }
 
-  function handleVerification(event, user) {
+  async function handleVerification(event, user) {
     event.preventDefault();
     setMessage("");
     setErrorMessage("");
     try {
-      onVerificationChange(user.id, decision, reason);
+      await onVerificationChange(user.id, decision, reason);
       setMessage(`‘${user.name}’ 검증을 ‘${verificationStatuses[decision]}’ 처리했습니다.`);
       setDecision("");
       setReason("");
@@ -40,12 +40,12 @@ function UserManagement({ users, onVerificationChange, onAddressVerificationChan
     }
   }
 
-  function handleAddressVerification(event, user) {
+  async function handleAddressVerification(event, user) {
     event.preventDefault();
     setMessage("");
     setErrorMessage("");
     try {
-      onAddressVerificationChange(user.id, decision, reason);
+      await onAddressVerificationChange(user.id, decision, reason);
       setMessage(`‘${user.name}’ 주소 확인을 ‘${verificationStatuses[decision]}’ 처리했습니다.`);
       setDecision("");
       setReason("");
@@ -144,6 +144,14 @@ function UserManagement({ users, onVerificationChange, onAddressVerificationChan
                     <>
                       <dt>소속 대학</dt>
                       <dd>{user.university || "미등록"}</dd>
+                      <dt>재학 증빙</dt>
+                      <dd>{user.verificationDocumentPath
+                        ? <button type="button" onClick={async () => {
+                          setErrorMessage("");
+                          try { await onOpenFile(user.verificationDocumentPath); }
+                          catch (failure) { setErrorMessage(failure.message); }
+                        }}>비공개 증빙 열기</button>
+                        : user.verificationDocumentName || "미등록"}</dd>
                     </>
                   )}
                   {user.role === "requester" && user.requesterType === "family" && (

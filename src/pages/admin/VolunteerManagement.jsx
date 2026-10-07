@@ -5,10 +5,11 @@ import { verificationStatuses } from "../../data/userVerification";
 function VolunteerManagement({ data, users, onCommand, disabled, userStorageError }) {
   const [filter, setFilter] = useState("전체");
   const activities = data.activities.filter((item) => filter === "전체" || item.type === filter);
-  function submit(event, command, ids) {
+  async function submit(event, command, ids) {
     event.preventDefault();
-    const fields = Object.fromEntries(new FormData(event.currentTarget));
-    if (onCommand(command, { ...ids, ...fields })) event.currentTarget.reset();
+    const form = event.currentTarget;
+    const fields = Object.fromEntries(new FormData(form));
+    if (await onCommand(command, { ...ids, ...fields })) form.reset();
   }
   return <section>
     <h2>봉사활동·모집·배정 관리</h2>
@@ -56,11 +57,12 @@ function VolunteerManagement({ data, users, onCommand, disabled, userStorageErro
           {!assignments.length && <p>배정된 봉사자가 없습니다.</p>}
           {assignments.map((assignment) => <div key={assignment.id}>
             <p>{users.find((user) => user.id === assignment.studentId)?.name || assignment.studentId} · {assignment.status}</p>
-            {assignment.status === "봉사자 배정" && <form onSubmit={(event) => {
+            {assignment.status === "봉사자 배정" &&             <form onSubmit={async (event) => {
               event.preventDefault();
+              const form = event.currentTarget;
               const reason = new FormData(event.currentTarget).get("reason");
               const command = event.nativeEvent.submitter.value;
-              if (onCommand(command, { assignmentId: assignment.id, reason })) event.currentTarget.reset();
+              if (await onCommand(command, { assignmentId: assignment.id, reason })) form.reset();
             }}>
               <label htmlFor={`start-reason-${assignment.id}`}>배정 변경 / 활동 시작 사유 </label><input id={`start-reason-${assignment.id}`} name="reason" required disabled={disabled} />
               <button value="start" disabled={disabled}>활동 시작 확인</button><button value="release" disabled={disabled}>배정 해제</button>

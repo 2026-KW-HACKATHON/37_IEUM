@@ -6,7 +6,7 @@ import SubmissionManagement from "./SubmissionManagement";
 import { volunteerTypes } from "../../data/noncontact";
 
 const ADMIN_CSS = `
-.ieum-admin{--ink:#172B3A;--sub:#5B6B77;--line:#DDE5EA;--bg:#F5F8FA;--card:#fff;--brand:#0F7B8A;--brand-soft:#E3F2F4;width:100%;max-width:480px;min-height:100vh;min-height:100svh;margin:0 auto;background:var(--bg);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:16px;line-height:1.55;display:flex;flex-direction:column}
+.ieum-admin{--ink:#172B3A;--sub:#5B6B77;--line:#DDE5EA;--bg:#F5F8FA;--card:#fff;--brand:#0F7B8A;width:100%;max-width:440px;min-height:100vh;min-height:100svh;margin:0 auto;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.6;display:flex;flex-direction:column}
 .ieum-admin *{box-sizing:border-box}
 .ieum-admin button,.ieum-admin input,.ieum-admin select,.ieum-admin textarea{font:inherit}
 .ieum-admin button{cursor:pointer}
@@ -44,6 +44,7 @@ const ADMIN_CSS = `
 .ieum-admin form button{background:var(--ink)!important;border-color:var(--ink)!important;color:#fff!important}
 .ieum-admin button:disabled{opacity:.45;cursor:not-allowed}
 .ieum-admin ul,.ieum-admin ol{padding-left:22px}
+@media(min-width:600px){.ieum-admin{box-shadow:0 0 48px #172B3A12}}
 `;
 
 function AdminDashboard({ data, users, onCommand, onVerificationChange, onAddressVerificationChange, onOpenFile, userStorageError, storageError, onLogout }) {

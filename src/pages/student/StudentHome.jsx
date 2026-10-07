@@ -438,7 +438,7 @@ function StudentActivityDetail({ activity, profile, actionError, onBack, onSubmi
 }
 
 const css = `
-.ih{--ink:#25404A;--sub:#66777C;--line:#E3E8E4;--bg:#FFF9F4;--card:#fff;--brand:#168A88;--brand-soft:#E6F6F1;width:100%;max-width:480px;min-height:100vh;min-height:100svh;margin:0 auto;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:17px;line-height:1.55;display:flex;flex-direction:column}
+.ih{--ink:#25404A;--sub:#66777C;--line:#E3E8E4;--bg:#FFF9F4;--card:#fff;--brand:#168A88;--brand-soft:#E6F6F1;width:100%;max-width:440px;min-height:100vh;min-height:100svh;margin:0 auto;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.6;display:flex;flex-direction:column}
 .ih *{box-sizing:border-box}
 .ih button{font:inherit;color:inherit;cursor:pointer}
 .ih :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
@@ -484,6 +484,7 @@ const css = `
 .ih .ih-item .ih-category{color:var(--brand);font-weight:700}
 .ih .ih-empty{color:var(--sub);font-size:15px;background:var(--card);border:1px dashed #D6E6DE;border-radius:22px;padding:20px;margin:0}
 .ih .ih-state{text-align:center;padding:24px 16px}
+@media(min-width:600px){.ih{box-shadow:0 0 48px #25404A12}}
 `;
 
 export default StudentHome;

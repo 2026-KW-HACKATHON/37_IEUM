@@ -1,5 +1,5 @@
 const styles = `
-.verification-gate{min-height:100vh;min-height:100svh;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:#25404A;font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;display:flex;flex-direction:column}
+.verification-gate{min-height:100vh;min-height:100svh;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:#25404A;font-family:var(--font-body);display:flex;flex-direction:column}
 .verification-gate *{box-sizing:border-box}
 .verification-gate header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid #DDE5EA}
 .verification-gate .logo{font-size:22px;font-weight:800;color:#0F7B8A}

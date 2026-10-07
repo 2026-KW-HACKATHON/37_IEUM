@@ -10,7 +10,7 @@ const roles = [
 const AGE_GROUPS = ["60대", "70대", "80대", "90대 이상"];
 
 const CSS = `
-.rq-app{--ink:#25404A;--sub:#66777C;--line:#E3E8E4;--bg:#FFF9F4;--card:#fff;--brand:#168A88;--brand-soft:#E6F6F1;width:100%;max-width:480px;min-height:100vh;min-height:100svh;margin:0 auto;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:17px;line-height:1.55;display:flex;flex-direction:column}
+.rq-app{--ink:#25404A;--sub:#66777C;--line:#E3E8E4;--bg:#FFF9F4;--card:#fff;--brand:#168A88;--brand-soft:#E6F6F1;width:100%;max-width:440px;min-height:100vh;min-height:100svh;margin:0 auto;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.6;display:flex;flex-direction:column}
 .rq-app *{box-sizing:border-box}
 .rq-app button{font:inherit;color:inherit;cursor:pointer}
 .rq-app :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
@@ -39,6 +39,18 @@ const CSS = `
 .rq-alert[role="alert"]{border-color:#B4532A;color:#7C3217}
 .rq-welcome .rq-main{justify-content:space-evenly;padding-top:clamp(24px,8vh,80px);padding-bottom:clamp(24px,8vh,80px);gap:clamp(20px,5vh,40px)}
 .rq-welcome .rq-hero{padding-top:clamp(36px,8vh,76px);padding-bottom:clamp(36px,8vh,76px)}
+.rq-admin-login{min-height:100vh;min-height:100svh;background:radial-gradient(ellipse at 50% 38%,#E6F6F1 0%,#FFF9F4 62%)}
+.rq-admin-login .rq-header{padding:20px 22px;background:#FFFFFFD9}
+.rq-admin-login .rq-main{justify-content:center;gap:clamp(24px,5vh,40px);padding:clamp(36px,9vh,88px) 22px clamp(44px,11vh,104px)}
+.rq-admin-login .rq-hero{min-height:clamp(170px,26vh,240px);display:flex;flex-direction:column;justify-content:flex-end;padding:30px 24px;border-radius:30px}
+.rq-admin-login .rq-hero h1{font-size:clamp(27px,7vw,34px)}
+.rq-admin-login form{width:100%;padding:22px;border:1px solid #E3E8E4;border-radius:26px;background:#FFFFFFD9;box-shadow:0 16px 40px #25404A12}
+.rq-admin-login form .rq-main{gap:18px}
+.rq-admin-login .rq-field{gap:10px}
+.rq-admin-login .rq-field input{min-height:54px}
+.rq-admin-login .rq-btn.big{min-height:60px}
+.rq-admin-login>.rq-main>.rq-btn{margin-top:-8px}
+@media(min-width:600px){.rq-app{box-shadow:0 0 48px #25404A12}}
 `;
 
 export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin, startupError, localMode, adminOnly = false }) {
@@ -46,6 +58,7 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
   const [role, setRole] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [adminId, setAdminId] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [university, setUniversity] = useState("");
@@ -60,8 +73,9 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
 
   const isStudent = role === "student";
   const isRequester = role === "self" || role === "family";
+  const localAdminLogin = adminOnly && localMode;
   const canSubmit = Boolean(
-    phone.trim() && password &&
+    (localAdminLogin ? adminId.trim() : phone.trim()) && password &&
     (mode === "login" || (password.length >= 8 && password === passwordConfirm && role && name.trim() && consented &&
       (isStudent ? university.trim() && document :
         isRequester ? address.trim() && (role !== "self" || ageGroup) : false)))
@@ -76,6 +90,10 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
         return;
       }
       if (mode === "login") {
+        if (localAdminLogin) {
+          await onEnterAdmin(adminId.trim(), password);
+          return;
+        }
         await onLogin(phone, password);
         return;
       }
@@ -109,10 +127,10 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
   }
 
   return (
-    <div className={`rq-app${mode === "welcome" ? " rq-welcome" : ""}`}>
+    <div className={`rq-app${mode === "welcome" ? " rq-welcome" : ""}${adminOnly ? " rq-admin-login" : ""}`}>
       <style>{CSS}</style>
       <header className="rq-header">
-        {mode !== "welcome" && <button className="rq-back" type="button" onClick={() => { setMode("welcome"); setError(""); }} aria-label="처음으로 돌아가기">‹</button>}
+        {mode !== "welcome" && !adminOnly && <button className="rq-back" type="button" onClick={() => { setMode("welcome"); setError(""); }} aria-label="처음으로 돌아가기">‹</button>}
         <span className="rq-logo">이음</span>
       </header>
 
@@ -126,13 +144,12 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
             </section>
             <button className="rq-btn primary big" type="button" onClick={() => setMode("login")}>로그인</button>
             {!adminOnly && <button className="rq-btn big" type="button" onClick={() => setMode("signup")}>회원가입</button>}
-            {adminOnly && localMode && <button className="rq-btn big" type="button" onClick={onEnterAdmin}>로컬 개발용 운영자 화면</button>}
           </>
         ) : (
           <>
             <section className="rq-hero">
               <h1>{confirmationRequired ? "휴대전화 인증" : mode === "signup" ? "이음 회원가입" : adminOnly ? "운영자 로그인" : "이음 로그인"}</h1>
-              <p>{confirmationRequired ? "문자로 받은 인증번호를 입력해 가입을 완료해 주세요." : mode === "signup" ? "함께할 유형을 선택하고 필요한 정보를 입력해 주세요." : adminOnly ? "운영자 계정으로 로그인해 주세요." : "가입한 휴대전화 번호와 비밀번호를 입력해 주세요."}</p>
+              <p>{confirmationRequired ? "문자로 받은 인증번호를 입력해 가입을 완료해 주세요." : mode === "signup" ? "함께할 유형을 선택하고 필요한 정보를 입력해 주세요." : localAdminLogin ? "시연용 운영자 아이디와 비밀번호를 입력해 주세요." : adminOnly ? "운영자 계정으로 로그인해 주세요." : "가입한 휴대전화 번호와 비밀번호를 입력해 주세요."}</p>
             </section>
 
             {!confirmationRequired && mode === "signup" && <div className="rq-entry-options" role="group" aria-label="회원 유형">
@@ -150,7 +167,9 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
               ))}
             </div>}
 
-            <form onSubmit={submit}>
+            {mode === "signup" && !role
+              ? <p className="rq-note" role="status">회원 유형을 선택하면 가입 정보를 입력할 수 있어요.</p>
+              : <form onSubmit={submit}>
                 <div className="rq-main" style={{ padding: 0 }}>
                   {confirmationRequired ? <>
                     <p className="rq-alert">인증 번호를 보낼 전화번호: {phone}</p>
@@ -161,11 +180,15 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
                   {mode === "signup" && <label className="rq-field">이름
                     <input autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} />
                   </label>}
-                  <label className="rq-field">휴대전화 번호
-                    <input autoComplete="tel" type="tel" inputMode="numeric" required value={phone} onChange={(event) => setPhone(formatPhoneInput(event.target.value))} placeholder="010-0000-0000" />
-                  </label>
+                  {localAdminLogin
+                    ? <label className="rq-field">운영자 아이디
+                      <input autoComplete="username" required value={adminId} onChange={(event) => setAdminId(event.target.value)} />
+                    </label>
+                    : <label className="rq-field">휴대전화 번호
+                      <input autoComplete="tel" type="tel" inputMode="numeric" required value={phone} onChange={(event) => setPhone(formatPhoneInput(event.target.value))} placeholder="010-0000-0000" />
+                    </label>}
                   <label className="rq-field">비밀번호
-                    <input autoComplete={mode === "login" ? "current-password" : "new-password"} type="password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} />
+                    <input autoComplete={mode === "login" ? "current-password" : "new-password"} type="password" minLength={localAdminLogin ? undefined : 8} required value={password} onChange={(event) => setPassword(event.target.value)} />
                     {mode === "signup" && <span className="rq-note">8자 이상으로 입력해 주세요.</span>}
                   </label>
                   {mode === "signup" && <label className="rq-field">비밀번호 확인
@@ -223,8 +246,7 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
                   {error && <p className="rq-alert" role="alert">{error}</p>}
                   <button className="rq-btn primary big" type="submit" disabled={confirmationRequired ? otp.length !== 6 : !canSubmit}>{confirmationRequired ? "인증하고 가입 완료" : mode === "signup" ? "가입 신청하기" : adminOnly ? "운영자 로그인" : "로그인"}</button>
                 </div>
-              </form>
-              {adminOnly && localMode && <button className="rq-btn big" type="button" onClick={onEnterAdmin}>로컬 개발용 운영자 화면</button>}
+              </form>}
           </>
         )}
       </main>

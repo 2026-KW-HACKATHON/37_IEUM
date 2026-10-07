@@ -471,7 +471,7 @@ export default function RequesterHome({
 /* ───────── 스타일 (팀원 D의 공통 디자인 토큰이 정해지면 변수만 교체) ───────── */
 const CSS = `
 .rq-app{--ink:#25404A;--sub:#66777C;--line:#E3E8E4;--bg:#FFF9F4;--card:#fff;--brand:#168A88;--brand-soft:#E6F6F1;--warn:#B4532A;--warn-soft:#FBEBE3;--done:#2E7D55;--done-soft:#E4F3EA;
-width:100%;max-width:480px;margin:0 auto;min-height:100vh;min-height:100svh;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:17px;line-height:1.55;display:flex;flex-direction:column}
+width:100%;max-width:440px;margin:0 auto;min-height:100vh;min-height:100svh;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.6;display:flex;flex-direction:column}
 .rq-app *{box-sizing:border-box}
 .rq-app button{font:inherit;color:inherit;cursor:pointer}
 .rq-app :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
@@ -562,4 +562,5 @@ width:100%;max-width:480px;margin:0 auto;min-height:100vh;min-height:100svh;back
 .rq-tabs{flex-direction:column}
 }
 @media (prefers-reduced-motion:no-preference){.rq-card,.rq-btn{transition:transform .12s}.rq-card:active,.rq-btn:active{transform:scale(.99)}}
+@media(min-width:600px){.rq-app{box-shadow:0 0 48px #25404A12}}
 `;

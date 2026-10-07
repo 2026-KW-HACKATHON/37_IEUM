@@ -1,4 +1,6 @@
 :root {
+  --font-body: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+  --font-display: 'Gowun Dodum', 'Noto Sans KR', sans-serif;
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
@@ -11,13 +13,13 @@
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: var(--font-body);
+  --heading: var(--font-display);
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -52,6 +54,11 @@
 
 body {
   margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  min-height: 100svh;
+  font-family: var(--font-body);
+  background: #edf4f1;
 }
 
 #root {
@@ -63,6 +70,13 @@ body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 h1,

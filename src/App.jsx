@@ -178,12 +178,18 @@ function App() {
     }
     setCurrentUser(user);
   }
-  function enterDevelopmentAdmin() {
-    if (isSupabaseConfigured) return;
+  function enterDevelopmentAdmin(adminId, password) {
+    const expectedId = import.meta.env.VITE_DEMO_ADMIN_ID;
+    const expectedPassword = import.meta.env.VITE_DEMO_ADMIN_PASSWORD;
+    if (isSupabaseConfigured) throw new Error("아이디 로그인은 로컬 시연 모드에서만 사용할 수 있습니다.");
+    if (!expectedId || !expectedPassword) throw new Error("시연용 운영자 아이디와 비밀번호가 배포 환경변수에 설정되지 않았습니다.");
+    if (adminId !== expectedId || password !== expectedPassword) {
+      throw new Error("운영자 아이디 또는 비밀번호가 올바르지 않습니다.");
+    }
     setCurrentUser({
       id: "development-admin",
       role: "admin",
-      name: "개발 운영자",
+      name: adminId,
       isDemo: true,
     });
   }

@@ -154,6 +154,15 @@ function App() {
     }
     setCurrentUser(user);
   }
+  function enterDevelopmentAdmin() {
+    if (isSupabaseConfigured) return;
+    setCurrentUser({
+      id: "development-admin",
+      role: "admin",
+      name: "개발 운영자",
+      isDemo: true,
+    });
+  }
   async function verifyPhone(phone, token, verificationDocument) {
     const { data, error } = await supabase.auth.verifyOtp({
       phone: toSupabasePhone(phone),
@@ -382,6 +391,8 @@ function App() {
   if (!appReady) return <main className="rq-main"><p>이음 서비스 연결 중…</p></main>;
   if (startupError && !currentUser) return <LoginHome
     startupError={startupError}
+    localMode={!isSupabaseConfigured}
+    onEnterAdmin={enterDevelopmentAdmin}
     onLogin={loginUser}
     onRegister={registerUser}
     onVerify={verifyPhone}
@@ -393,6 +404,8 @@ function App() {
     userStorageError={userState.storageError} storageError={operationState.storageError}
     onLogout={() => isSupabaseConfigured ? supabase.auth.signOut() : setCurrentUser(null)} />;
   if (!currentUser) return <LoginHome
+    localMode={!isSupabaseConfigured}
+    onEnterAdmin={enterDevelopmentAdmin}
     onLogin={loginUser}
     onRegister={registerUser}
     onVerify={verifyPhone}

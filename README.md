@@ -16,7 +16,9 @@
 
 1365 실적 등록은 이 앱의 내부 인증과 별개입니다. 기관 승인·제휴 및 1365 연동 권한이 확보되기 전에는 공식 봉사시간으로 표시하지 않습니다.
 
-## Supabase 프로젝트 설정
+## Supabase 프로젝트 설정 (실제 원격 서비스 사용 시)
+
+SMS 인증을 설정하지 않고 화면과 흐름을 테스트하려면 아래 설정 대신 [로컬 개발](#로컬-개발) 모드를 사용하세요. 로컬 모드에서는 `.env.local`의 `VITE_USE_LOCAL_STORAGE=true`가 Supabase 연결보다 우선합니다.
 
 1. [Supabase Dashboard](https://supabase.com/dashboard/projects)에서 프로젝트를 만들고 가까운 리전을 선택합니다.
 2. **Project Settings → API**에서 Project URL과 publishable key(구형 프로젝트의 anon key)를 확인합니다.
@@ -59,7 +61,7 @@
 
 ## 로컬 개발
 
-환경변수가 없으면 개발용 브라우저 저장소 모드로 실행됩니다. 이 데이터는 기기 간 공유되지 않으며 실사용자 계정이나 공식 봉사 실적이 아닙니다.
+`.env.local`에 `VITE_USE_LOCAL_STORAGE=true`를 설정하면 Supabase URL과 키가 있어도 SMS 인증 없이 개발용 브라우저 저장소 모드로 실행됩니다. 시작 화면의 **개발용 운영자 화면** 버튼으로 운영자 화면을 열 수 있습니다. 기존 URL과 키는 삭제할 필요가 없습니다. 이 모드의 계정·데이터는 현재 브라우저에만 저장되며 원격 Supabase와 공유되지 않고, 학생 증빙 파일 업로드도 진행되지 않습니다. 실사용자 계정이나 공식 봉사 실적이 아닙니다. 원격 Supabase를 다시 사용하려면 이 설정을 삭제하거나 `false`로 바꾸고 개발 서버를 재시작하세요.
 
 ```sh
 npm install

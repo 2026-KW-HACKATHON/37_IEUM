@@ -39,7 +39,7 @@ const CSS = `
 .rq-alert[role="alert"]{border-color:#B4532A;color:#7C3217}
 `;
 
-export default function LoginHome({ onLogin, onRegister, onVerify, startupError }) {
+export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin, startupError, localMode }) {
   const [mode, setMode] = useState("welcome");
   const [role, setRole] = useState("");
   const [name, setName] = useState("");
@@ -124,6 +124,7 @@ export default function LoginHome({ onLogin, onRegister, onVerify, startupError 
             </section>
             <button className="rq-btn primary big" type="button" onClick={() => setMode("login")}>로그인</button>
             <button className="rq-btn big" type="button" onClick={() => setMode("signup")}>회원가입</button>
+            {localMode && <button className="rq-btn big" type="button" onClick={onEnterAdmin}>개발용 운영자 화면</button>}
           </>
         ) : (
           <>
@@ -184,7 +185,9 @@ export default function LoginHome({ onLogin, onRegister, onVerify, startupError 
                         <span className="rq-note">재학증명서 또는 학생증 자료를 선택해 주세요. PDF, JPG, PNG, WEBP 파일을 지원해요.</span>
                       </label>
                       {document && <p className="rq-note">선택한 파일: {document.name} ({Math.ceil(document.size / 1024)}KB)</p>}
-                      <p className="rq-alert">선택한 증빙은 휴대전화 인증 후 비공개 저장소에 업로드되어 운영자만 확인할 수 있어요.</p>
+                      {localMode
+                        ? <p className="rq-alert">로컬 테스트 모드에서는 휴대전화 인증 및 증빙 파일 업로드가 진행되지 않으며, 데이터는 이 브라우저에만 저장돼요.</p>
+                        : <p className="rq-alert">선택한 증빙은 휴대전화 인증 후 비공개 저장소에 업로드되어 운영자만 확인할 수 있어요.</p>}
                     </>
                   )}
 

@@ -84,30 +84,42 @@ Supabase 미설정 상태에서는 로컬 브라우저 저장소 모드로 실�
    ```
 
 3. Supabase SQL Editor에서 `supabase/migrations/`의 SQL 파일을 파일명 순서대로 실행합니다. 초기 스키마, 활동 시작일 처리, SMS 없이 전화번호/비밀번호 로그인용 별칭을 저장하는 마이그레이션이 포함되어 있습니다.
-4. Authentication에서 **Email provider를 켜고 Confirm email을 끕니다.** 앱은 전화번호를 내부 로그인용 별칭 이메일로 변환해 이메일/비밀번호 인증을 사용하며 SMS를 보내지 않습니다. 전화번호는 프로필 연락처로 저장할 뿐 소유 여부를 확인하지 않습니다. Phone provider와 SMS 공급자(Twilio 등)는 설정하지 않아도 됩니다. Confirm email 설정 변경 후 새 가입으로 바로 로그인이 되는지 확인하세요.
+4. Authentication → Sign In / Providers에서 **Email provider를 켜고**, User Signups에서 **Confirm email을 끕니다.** 앱은 전화번호를 내부 로그인용 별칭 이메일로 바꿔 이메일/비밀번호 인증을 사용하므로 SMS를 보내지 않습니다. Phone provider와 Twilio는 설정하지 않아도 됩니다. 가입 전화번호의 소유 여부는 확인하지 않습니다.
 5. `vercel.json`은 `/admin` 경로를 앱으로 연결합니다. 사용자 링크는 배포 도메인의 `/`, 운영자 링크는 `/admin`입니다.
 6. 배포 호스트의 환경변수에 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`를 설정하고 `VITE_USE_LOCAL_STORAGE`는 설정하지 않거나 `false`로 둡니다. 환경변수 변경 후에는 새 빌드가 필요합니다. 호스트의 환경변수는 브라우저 번들에 포함되므로 publishable/anon key만 사용합니다.
-7. 운영자로 사용할 전화번호와 비밀번호로 일반 계정을 만듭니다. SMS 인증은 없습니다. 배포된 `/admin`에서는 운영자 ID `kwhack`으로 로그인하므로, 아래 SQL에서 해당 계정의 Auth 이메일을 로그인용 별칭으로 바꾸고 프로필을 운영자로 승격합니다. 전화번호는 실제 계정의 E.164 값으로 바꾸세요.
+7. 배포 사이트 `/`에서 운영자로 사용할 이름·전화번호·비밀번호로 일반 가입을 합니다. SMS 인증은 없으며, 가입 직후 주소 검토 대기 화면이 나와도 정상입니다. 첫 운영자는 아직 없으므로 아래 SQL로 방금 만든 계정을 운영자로 지정하고 `/admin` 로그인 ID `kwhack`을 연결합니다. SQL의 전화번호를 실제 가입 번호의 E.164 형식으로 바꾸세요. 예를 들어 `010-1234-5678`은 `+821012345678`입니다.
 
    ```sql
-   begin;
+   do $$
+   declare
+     target_user_id uuid;
+   begin
+     select id into target_user_id
+     from public.profiles
+     where phone = '+821012345678'
+     for update;
 
-   update auth.users u
-   set email = 'kwhack@ieum.invalid',
-       email_confirmed_at = coalesce(u.email_confirmed_at, now()),
-       updated_at = now()
-   from public.profiles p
-   where p.id = u.id
-     and p.phone = '+821012345678';
+     if target_user_id is null then
+       raise exception '가입 계정을 찾지 못했습니다. 전화번호 형식을 확인하세요.';
+     end if;
 
-   update public.profiles
-   set role = 'admin', requester_type = null
-   where phone = '+821012345678';
+     update auth.users
+     set email = 'kwhack@ieum.invalid',
+         email_confirmed_at = coalesce(email_confirmed_at, now()),
+         updated_at = now()
+     where id = target_user_id;
 
-   commit;
+     update public.profiles
+     set role = 'admin', requester_type = null
+     where id = target_user_id;
+
+     if not found then
+       raise exception '프로필을 찾지 못했습니다. 가입 상태를 확인하세요.';
+     end if;
+   end $$;
    ```
 
-   가입할 때 사용한 Supabase 비밀번호로 로그인합니다. 요청한 비밀번호를 쓰려면 계정 가입 시 설정하거나 Supabase Auth 사용자 관리에서 재설정하세요. `kwhack` 별칭은 실제 이메일 수신용이 아닌 로그인 식별자입니다. 운영자 권한은 신뢰할 수 있는 계정에만 부여하고, `service_role` key나 데이터베이스 비밀번호는 클라이언트에 노출하지 마세요.
+   성공하면 `/admin`에서 아이디 `kwhack`과 가입할 때 설정한 비밀번호로 로그인합니다. `kwhack@ieum.invalid`는 실제 이메일 수신용이 아닌 로그인 식별자입니다. 운영자 권한은 신뢰할 수 있는 계정에만 부여하고, `service_role` key나 데이터베이스 비밀번호는 클라이언트에 노출하지 마세요.
 
 Supabase는 `/`와 `/admin`에서 공유됩니다. 경로는 진입 화면만 구분하며, 실제 운영자 접근은 데이터베이스 프로필 권한과 RLS 정책으로 제한해야 합니다.
 

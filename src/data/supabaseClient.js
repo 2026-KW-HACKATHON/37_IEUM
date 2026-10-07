@@ -3,6 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const useLocalStorage = import.meta.env.VITE_USE_LOCAL_STORAGE === "true";
+const authStorageKey = /^\/admin\/?$/.test(window.location.pathname)
+  ? "ieum-admin-auth"
+  : "ieum-user-auth";
 
 export const isSupabaseConfigured = !useLocalStorage && Boolean(supabaseUrl && supabasePublishableKey);
 
@@ -12,7 +15,12 @@ if (!useLocalStorage && ((supabaseUrl && !supabasePublishableKey) || (!supabaseU
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabasePublishableKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: authStorageKey,
+    },
   })
   : null;
 

@@ -28,10 +28,41 @@ const STAGE_MESSAGE = {
   완료: "운영자 인증이 끝났어요. 아래에서 결과물을 확인해 보세요.",
 };
 
+const SIMPLE_STAGES = {
+  "요청 접수": "요청을 받았어요",
+  "운영자 검토 중": "담당자가 확인 중",
+  "모집 중": "대학생을 찾는 중",
+  "진행 중": "도움 자료를 만드는 중",
+  완료: "도움이 끝났어요",
+};
+
+const SIMPLE_STAGE_MESSAGES = {
+  "요청 접수": "도움 요청을 받았어요. 담당자가 곧 확인할게요.",
+  "운영자 검토 중": "담당자가 요청 내용을 확인하고 있어요. 보통 1~2일 걸려요.",
+  "모집 중": "요청하신 도움을 드릴 대학생을 찾고 있어요.",
+  "진행 중": "대학생이 도움 자료를 만들고 있어요. 다 되면 알려드릴게요.",
+  완료: "도움 자료가 준비됐어요. 아래에서 확인해 보세요.",
+};
+
 const TYPES = [
-  { key: "생활·디지털 안내", icon: "📱", examples: "스마트폰 · 키오스크 · 병원 예약" },
-  { key: "생활·취미 키트", icon: "🌱", examples: "식물 · 만들기 · 생활 키트" },
-  { key: "말벗·기록", icon: "💬", examples: "안부 연락 · 이야기 기록" },
+  {
+    key: "생활·디지털 안내",
+    simpleLabel: "휴대전화·키오스크 사용법",
+    icon: "📱",
+    examples: "휴대전화 사용 · 무인 주문 · 병원 예약",
+  },
+  {
+    key: "생활·취미 키트",
+    simpleLabel: "취미와 생활에 필요한 도움",
+    icon: "🌱",
+    examples: "식물 키우기 · 만들기 · 생활에 필요한 물건",
+  },
+  {
+    key: "말벗·기록",
+    simpleLabel: "이야기 나누기",
+    icon: "💬",
+    examples: "안부 나누기 · 살아오신 이야기 적기",
+  },
 ];
 const AGE_GROUPS = ["60대", "70대", "80대", "90대 이상"];
 const RESULT_TYPES = ["영상", "PDF 안내문", "사진 자료", "글 기록"];
@@ -97,20 +128,23 @@ const Header = ({ title, onBack, onLogout }) => (
   </header>
 );
 
-const StatusChip = ({ status }) => {
+const StatusChip = ({ status, simpleMode = false }) => {
   const stage = toStage(status);
   const tone = stage === "완료" ? "done" : status === "수정 요청" ? "warn" : "ing";
-  return <span className={`rq-chip ${tone}`}>{status === "수정 요청" ? "수정 요청" : stage}</span>;
+  const label = status === "수정 요청"
+    ? (simpleMode ? "내용을 다시 알려주세요" : "수정 요청")
+    : simpleMode ? SIMPLE_STAGES[stage] : stage;
+  return <span className={`rq-chip ${tone}`}>{label}</span>;
 };
 
-const Stepper = ({ stage }) => {
+const Stepper = ({ stage, simpleMode = false }) => {
   const idx = STAGES.indexOf(stage);
   return (
-    <ol className="rq-stepper" aria-label="진행 상황">
+    <ol className="rq-stepper" aria-label={simpleMode ? "도움 진행 상황" : "진행 상황"}>
       {STAGES.map((s, i) => (
         <li key={s} className={i < idx ? "past" : i === idx ? "now" : ""} aria-current={i === idx ? "step" : undefined}>
           <span className="dot">{i < idx ? "✓" : ""}</span>
-          <span className="label">{s}</span>
+          <span className="label">{simpleMode ? SIMPLE_STAGES[s] : s}</span>
         </li>
       ))}
     </ol>
@@ -136,7 +170,7 @@ export default function RequesterHome({
   const [fileError, setFileError] = useState("");
   const [view, setView] = useState("home"); // home | form | detail
   const [selectedId, setSelectedId] = useState(null);
-  const [tab, setTab] = useState("전체");
+  const [tab, setTab] = useState(() => requesterType === "self" ? "모두" : "전체");
   const [form, setForm] = useState(() => ({
     ...EMPTY_FORM,
     who: requesterType === "family" ? "가족" : "본인",
@@ -144,12 +178,16 @@ export default function RequesterHome({
   }));
   const [step, setStep] = useState(1);
   const [editingId, setEditingId] = useState(null);
+  const simpleMode = requesterType === "self";
+  const typeLabel = (type) => TYPES.find((item) => item.key === type)?.[simpleMode ? "simpleLabel" : "key"] || type;
+  const stageMessage = (stage) => simpleMode ? SIMPLE_STAGE_MESSAGES[stage] : STAGE_MESSAGE[stage];
 
   const selected = requests.find((r) => r.id === selectedId);
   const isDone = (r) => toStage(r.status) === "완료";
   const ongoing = requests.filter((r) => !isDone(r));
   const done = requests.filter(isDone);
-  const list = tab === "진행 중" ? ongoing : tab === "완료" ? done : requests;
+  const list = tab === "진행 중" ? ongoing
+    : tab === (simpleMode ? "끝남" : "완료") ? done : requests;
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
   const openDetail = (id) => { setSelectedId(id); setView("detail"); };
@@ -177,7 +215,7 @@ export default function RequesterHome({
     setSubmitError("");
     try {
       const id = onSubmitRequest ? await onSubmitRequest(form, editingId) : editingId || Date.now();
-      const updated = { ...form, id, title, status: editingId ? "운영자 검토" : "요청 접수" };
+        const updated = { ...form, id, title, status: editingId ? "운영자 검토" : "요청 접수" };
       if (editingId) {
         setLocalRequests((rs) => rs.map((request) => request.id === editingId ? updated : request));
       } else if (!savedRequests) {
@@ -199,34 +237,38 @@ export default function RequesterHome({
           <Header onLogout={onLogout} />
           <main className="rq-main">
             <section className="rq-hero">
-              <h2>{requesterType === "family" ? <>어르신께 필요한 도움을<br />대신 요청해 드려요</> : "필요한 도움을 요청해 보세요"}</h2>
-              <p>{requesterType === "family" ? "대학생 봉사자가 비대면으로 자료를 만들어 드려요. 시간을 맞추지 않아도 돼요." : "대학생 봉사자가 필요한 자료를 비대면으로 만들어요."}</p>
-              <button className="rq-btn primary big" onClick={startNew}>{requesterType === "family" ? "도움 요청하기" : "도움 부탁하기"}</button>
+              <h2>{requesterType === "family"
+                ? <>어르신께 필요한 도움을<br />대신 요청해 드려요</>
+                : "필요한 도움을 말씀해 주세요"}</h2>
+              <p>{requesterType === "family"
+                ? "대학생 봉사자가 비대면으로 자료를 만들어 드려요. 시간을 맞추지 않아도 돼요."
+                : "대학생이 집에서 편하게 볼 수 있는 도움 자료를 만들어 드려요."}</p>
+              <button className="rq-btn primary big" onClick={startNew}>{requesterType === "family" ? "도움 요청하기" : "도움받기 신청하기"}</button>
             </section>
 
             <section className="rq-summary">
-              <div><strong>{ongoing.length}</strong><span>진행 중인 요청</span></div>
-              <div><strong>{done.length}</strong><span>완료된 요청</span></div>
+              <div><strong>{ongoing.length}</strong><span>{simpleMode ? "진행 중인 도움" : "진행 중인 요청"}</span></div>
+              <div><strong>{done.length}</strong><span>{simpleMode ? "끝난 도움" : "완료된 요청"}</span></div>
             </section>
 
             <section>
-              <h3 className="rq-h3">내 의뢰</h3>
+              <h3 className="rq-h3">{simpleMode ? "내가 부탁한 도움" : "내 의뢰"}</h3>
               <div className="rq-tabs" role="tablist">
-                {["전체", "진행 중", "완료"].map((t) => (
+                {(simpleMode ? ["모두", "진행 중", "끝남"] : ["전체", "진행 중", "완료"]).map((t) => (
                   <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t}</button>
                 ))}
               </div>
               {list.length === 0 ? (
-                <p className="rq-empty">아직 {tab === "전체" ? "" : `${tab} `}요청이 없어요. 위 버튼으로 첫 요청을 만들어 보세요.</p>
+                <p className="rq-empty">아직 {tab === "전체" || tab === "모두" ? "" : `${tab} `}도움 요청이 없어요. 위 버튼을 눌러 시작해 보세요.</p>
               ) : (
                 <ul className="rq-list">
                   {list.map((r) => (
                     <li key={r.id}>
                       <button className="rq-card" onClick={() => openDetail(r.id)}>
-                        <div className="top"><span className="type">{r.type}</span><StatusChip status={r.status} /></div>
+                        <div className="top"><span className="type">{typeLabel(r.type)}</span><StatusChip status={r.status} simpleMode={simpleMode} /></div>
                         <strong>{r.title}</strong>
                         <span className="sub">{r.who === "가족" ? `${r.elderName} · ${r.ageGroup}` : `본인 · ${r.ageGroup}`}</span>
-                        {r.status === "수정 요청" && <span className="hint">운영자의 수정 요청이 있어요</span>}
+                        {r.status === "수정 요청" && <span className="hint">{simpleMode ? "담당자가 내용을 더 알려달라고 했어요" : "운영자의 수정 요청이 있어요"}</span>}
                       </button>
                     </li>
                   ))}
@@ -240,7 +282,9 @@ export default function RequesterHome({
       {/* ── 요청 작성 (4단계) ── */}
       {view === "form" && (
         <>
-          <Header title={editingId ? "요청 수정" : "도움 요청하기"} onBack={() => (step > 1 && !editingId ? setStep(step - 1) : setView(editingId ? "detail" : "home"))} onLogout={onLogout} />
+          <Header title={editingId
+            ? simpleMode ? "도움 내용 고치기" : "요청 수정"
+            : simpleMode ? "도움받기 신청" : "도움 요청하기"} onBack={() => (step > 1 && !editingId ? setStep(step - 1) : setView(editingId ? "detail" : "home"))} onLogout={onLogout} />
           <main className="rq-main">
             {submitError && <p className="rq-alert" role="alert">{submitError}</p>}
             <div className="rq-progress" aria-label={`${step}/4 단계`}>
@@ -251,16 +295,16 @@ export default function RequesterHome({
               <section className="rq-step">
                 <h2>{requesterType === "family"
                   ? "누구를 위한 도움인가요?"
-                  : profile?.ageGroup ? "회원가입에서 입력한 연령대예요." : "연령대를 골라 주세요."}</h2>
+                  : profile?.ageGroup ? "회원가입 때 알려주신 연령대예요." : "연령대를 골라 주세요."}</h2>
                 {form.who === "가족" && (
-                  <label className="rq-field">어르신 성함 또는 호칭
+                  <label className="rq-field">{simpleMode ? "어르신 성함이나 부르는 이름" : "어르신 성함 또는 호칭"}
                     <input value={form.elderName} onChange={(e) => set({ elderName: e.target.value })} placeholder="예) 이순자 어르신" />
                   </label>
                 )}
                 <div className="rq-field">
-                  <span>{form.who === "가족" ? "어르신 연령대" : "내 연령대"}</span>
+                  <span>{form.who === "가족" ? "어르신 연령대" : simpleMode ? "내 나이대" : "내 연령대"}</span>
                   {requesterType === "self" && profile?.ageGroup
-                    ? <p className="rq-note">{profile.ageGroup} (회원가입 정보)</p>
+                    ? <p className="rq-note">{profile.ageGroup} (회원가입 때 알려주신 정보)</p>
                     : <div className="rq-pills">
                       {AGE_GROUPS.map((a) => (
                         <button key={a} className={form.ageGroup === a ? "on" : ""} onClick={() => set({ ageGroup: a })}>{a}</button>
@@ -277,7 +321,7 @@ export default function RequesterHome({
                   {TYPES.map((t) => (
                     <button key={t.key} className={`rq-type ${form.type === t.key ? "on" : ""}`} onClick={() => set({ type: t.key })}>
                       <span className="ic" aria-hidden>{t.icon}</span>
-                      <span><strong>{t.key}</strong><small>{t.examples}</small></span>
+                      <span><strong>{simpleMode ? t.simpleLabel : t.key}</strong><small>{t.examples}</small></span>
                     </button>
                   ))}
                 </div>
@@ -286,15 +330,15 @@ export default function RequesterHome({
 
             {step === 3 && (
               <section className="rq-step">
-                <h2>요청 내용을 알려 주세요</h2>
-                <label className="rq-field">어떤 도움이 필요한가요?
-                  <textarea rows={3} value={form.need} onChange={(e) => set({ need: e.target.value })} placeholder="예) 스마트폰으로 병원 예약하는 방법을 알고 싶어요." />
+                <h2>{simpleMode ? "필요한 도움을 알려 주세요" : "요청 내용을 알려 주세요"}</h2>
+                <label className="rq-field">{simpleMode ? "어떤 도움이 필요하세요?" : "어떤 도움이 필요한가요?"}
+                  <textarea rows={3} value={form.need} onChange={(e) => set({ need: e.target.value })} placeholder="예) 휴대전화로 병원 예약하는 방법을 알고 싶어요." />
                 </label>
-                <label className="rq-field">어르신의 상황 <em>(선택)</em>
-                  <textarea rows={3} value={form.situation} onChange={(e) => set({ situation: e.target.value })} placeholder="예) 앱 설치와 로그인이 어려우세요." />
+                <label className="rq-field">{simpleMode ? "미리 알려주실 내용" : "어르신의 상황"} <em>(선택)</em>
+                  <textarea rows={3} value={form.situation} onChange={(e) => set({ situation: e.target.value })} placeholder="예) 작은 글씨를 읽기 어려워요." />
                 </label>
                 <div className="rq-field">
-                  <span>원하는 결과물</span>
+                  <span>{simpleMode ? "받고 싶은 자료" : "원하는 결과물"}</span>
                   <div className="rq-pills">
                     {RESULT_TYPES.map((r) => (
                       <button key={r} className={form.resultWanted === r ? "on" : ""} onClick={() => set({ resultWanted: r })}>{r}</button>
@@ -302,32 +346,34 @@ export default function RequesterHome({
                   </div>
                 </div>
                 <div className="rq-field">
-                  <span>희망 기간</span>
+                  <span>{simpleMode ? "언제까지 받으면 좋을까요?" : "희망 기간"}</span>
                   <div className="rq-pills">
                     {PERIODS.map((p) => (
                       <button key={p} className={form.period === p ? "on" : ""} onClick={() => set({ period: p })}>{p}</button>
                     ))}
                   </div>
                 </div>
-                <label className="rq-field">기타 전달사항 <em>(선택)</em>
-                  <textarea rows={2} value={form.note} onChange={(e) => set({ note: e.target.value })} placeholder="예) 글씨는 크게 부탁드려요." />
+                <label className="rq-field">{simpleMode ? "더 알려주실 내용" : "기타 전달사항"} <em>(선택)</em>
+                  <textarea rows={2} value={form.note} onChange={(e) => set({ note: e.target.value })} placeholder="예) 글씨를 크게 해 주세요." />
                 </label>
               </section>
             )}
 
             {step === 4 && (
               <section className="rq-step">
-                <h2>이대로 요청할까요?</h2>
+                <h2>{simpleMode ? "이 내용으로 부탁할까요?" : "이대로 요청할까요?"}</h2>
                 <dl className="rq-dl">
-                  <dt>대상</dt><dd>{form.who === "가족" ? `${form.elderName} (${form.ageGroup})` : `본인 (${form.ageGroup})`}</dd>
-                  <dt>도움 유형</dt><dd>{form.type}</dd>
+                  <dt>{simpleMode ? "도움받을 분" : "대상"}</dt><dd>{form.who === "가족" ? `${form.elderName} (${form.ageGroup})` : `본인 (${form.ageGroup})`}</dd>
+                  <dt>{simpleMode ? "도움 종류" : "도움 유형"}</dt><dd>{typeLabel(form.type)}</dd>
                   <dt>필요한 도움</dt><dd>{form.need}</dd>
-                  {form.situation && (<><dt>어르신의 상황</dt><dd>{form.situation}</dd></>)}
-                  <dt>원하는 결과물</dt><dd>{form.resultWanted}</dd>
-                  <dt>희망 기간</dt><dd>{form.period}</dd>
-                  {form.note && (<><dt>기타 전달사항</dt><dd>{form.note}</dd></>)}
+                  {form.situation && (<><dt>{simpleMode ? "미리 알려주실 내용" : "어르신의 상황"}</dt><dd>{form.situation}</dd></>)}
+                  <dt>{simpleMode ? "받고 싶은 자료" : "원하는 결과물"}</dt><dd>{form.resultWanted}</dd>
+                  <dt>{simpleMode ? "받고 싶은 때" : "희망 기간"}</dt><dd>{form.period}</dd>
+                  {form.note && (<><dt>{simpleMode ? "더 알려주실 내용" : "기타 전달사항"}</dt><dd>{form.note}</dd></>)}
                 </dl>
-                <p className="rq-note">제출하면 운영자가 내용을 검토한 뒤 봉사활동으로 등록해요.</p>
+                <p className="rq-note">{simpleMode
+                  ? "보내주신 내용을 담당자가 확인한 뒤, 도와드릴 대학생을 찾아요."
+                  : "제출하면 운영자가 내용을 검토한 뒤 봉사활동으로 등록해요."}</p>
               </section>
             )}
           </main>
@@ -336,7 +382,9 @@ export default function RequesterHome({
             {step < 4 ? (
               <button className="rq-btn primary big" disabled={!canNext} onClick={() => setStep(step + 1)}>다음</button>
             ) : (
-              <button className="rq-btn primary big" onClick={submit}>{editingId ? "수정해서 다시 제출" : "요청 제출하기"}</button>
+              <button className="rq-btn primary big" onClick={submit}>{editingId
+                ? simpleMode ? "고친 내용 보내기" : "수정해서 다시 제출"
+                : simpleMode ? "도움 요청 보내기" : "요청 제출하기"}</button>
             )}
           </footer>
         </>
@@ -347,47 +395,49 @@ export default function RequesterHome({
         const stage = toStage(selected.status);
         return (
           <>
-            <Header title="내 의뢰" onBack={() => setView("home")} onLogout={onLogout} />
+            <Header title={simpleMode ? "내가 부탁한 도움" : "내 의뢰"} onBack={() => setView("home")} onLogout={onLogout} />
             <main className="rq-main">
               <div className="rq-detail-head">
-                <span className="type">{selected.type}</span>
+                <span className="type">{typeLabel(selected.type)}</span>
                 <h2>{selected.title}</h2>
-                <StatusChip status={selected.status} />
+                <StatusChip status={selected.status} simpleMode={simpleMode} />
               </div>
 
               <section className="rq-panel">
-                <Stepper stage={stage} />
-                <p className="rq-stage-msg">{STAGE_MESSAGE[stage]}</p>
+                <Stepper stage={stage} simpleMode={simpleMode} />
+                <p className="rq-stage-msg">{stageMessage(stage)}</p>
               </section>
 
               {selected.status === "수정 요청" && (
                 <section className="rq-alert">
-                  <strong>운영자가 수정을 요청했어요</strong>
+                  <strong>{simpleMode ? "담당자가 내용을 더 알려달라고 했어요" : "운영자가 수정을 요청했어요"}</strong>
                   <p>{selected.reviewNote}</p>
-                  <button className="rq-btn primary" onClick={() => startEdit(selected)}>요청 수정하기</button>
+                  <button className="rq-btn primary" onClick={() => startEdit(selected)}>{simpleMode ? "내용 고치기" : "요청 수정하기"}</button>
                 </section>
               )}
               {submitError && <p className="rq-alert" role="alert">{submitError}</p>}
 
               {selected.activity && (
                 <section>
-                  <h3 className="rq-h3">담당 봉사활동</h3>
+                  <h3 className="rq-h3">{simpleMode ? "도움을 주는 대학생 활동" : "담당 봉사활동"}</h3>
                   <dl className="rq-dl">
-                    <dt>활동명</dt><dd>{selected.activity.title}</dd>
-                    <dt>활동 기간</dt><dd>{selected.activity.period}</dd>
-                    <dt>진행 방식</dt><dd>비대면 · 정해진 시간 없이 기간 안에 진행해요</dd>
+                    <dt>{simpleMode ? "활동 이름" : "활동명"}</dt><dd>{selected.activity.title}</dd>
+                    <dt>{simpleMode ? "도움받는 기간" : "활동 기간"}</dt><dd>{selected.activity.period}</dd>
+                    <dt>{simpleMode ? "진행 방법" : "진행 방식"}</dt><dd>{simpleMode
+                      ? "집에서 자료를 만들어 드려요. 만날 약속은 필요 없어요."
+                      : "비대면 · 정해진 시간 없이 기간 안에 진행해요"}</dd>
                   </dl>
                 </section>
               )}
 
               {stage === "완료" && selected.result && (
                 <section>
-                  <h3 className="rq-h3">완료 결과</h3>
+                  <h3 className="rq-h3">{simpleMode ? "받을 자료" : "완료 결과"}</h3>
                   <div className="rq-panel">
-                    <h4>활동 내용</h4>
+                    <h4>{simpleMode ? "어떤 도움을 드렸나요?" : "활동 내용"}</h4>
                     <p>{selected.result.summary}</p>
                     <p className="sub">{selected.result.log}</p>
-                    <h4>학생 결과물</h4>
+                    <h4>{simpleMode ? "대학생이 만든 자료" : "학생 결과물"}</h4>
                     {fileError && <p className="rq-alert" role="alert">{fileError}</p>}
                     <ul className="rq-files">
                       {selected.result.files.map((f) => (
@@ -398,20 +448,22 @@ export default function RequesterHome({
                         }}>열기</button>}</li>
                       ))}
                     </ul>
-                    <p className="rq-note">운영자 검토와 인증이 끝난 결과물만 보여요.</p>
+                    <p className="rq-note">{simpleMode
+                      ? "담당자가 확인한 자료예요."
+                      : "운영자 검토와 인증이 끝난 결과물만 보여요."}</p>
                   </div>
                 </section>
               )}
 
               <section>
-                <h3 className="rq-h3">요청 내용</h3>
+                <h3 className="rq-h3">{simpleMode ? "부탁하신 내용" : "요청 내용"}</h3>
                 <dl className="rq-dl">
-                  <dt>대상</dt><dd>{selected.who === "가족" ? `${selected.elderName} (${selected.ageGroup})` : `본인 (${selected.ageGroup})`}</dd>
+                  <dt>{simpleMode ? "도움받을 분" : "대상"}</dt><dd>{selected.who === "가족" ? `${selected.elderName} (${selected.ageGroup})` : `본인 (${selected.ageGroup})`}</dd>
                   <dt>필요한 도움</dt><dd>{selected.need}</dd>
-                  {selected.situation && (<><dt>어르신의 상황</dt><dd>{selected.situation}</dd></>)}
-                  <dt>원하는 결과물</dt><dd>{selected.resultWanted}</dd>
-                  <dt>희망 기간</dt><dd>{selected.period}</dd>
-                  {selected.note && (<><dt>기타 전달사항</dt><dd>{selected.note}</dd></>)}
+                  {selected.situation && (<><dt>{simpleMode ? "미리 알려주신 내용" : "어르신의 상황"}</dt><dd>{selected.situation}</dd></>)}
+                  <dt>{simpleMode ? "받고 싶은 자료" : "원하는 결과물"}</dt><dd>{selected.resultWanted}</dd>
+                  <dt>{simpleMode ? "받고 싶은 때" : "희망 기간"}</dt><dd>{selected.period}</dd>
+                  {selected.note && (<><dt>{simpleMode ? "더 알려주신 내용" : "기타 전달사항"}</dt><dd>{selected.note}</dd></>)}
                 </dl>
               </section>
             </main>

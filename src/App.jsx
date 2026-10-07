@@ -4,12 +4,10 @@ import RequesterHome from "./pages/requester/RequesterHome";
 import LoginHome from "./pages/login/LoginHome";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import VerificationPending from "./components/VerificationPending";
-import { sampleUsers } from "./data/users";
 import { createPasswordCredential, normalizePhone, verifyPassword } from "./data/accountAuth";
 import { readUserState, reviewStudent, reviewRequesterAddress, saveUsers } from "./data/userVerification";
-import { initialNoncontactState } from "./data/noncontact";
 import { readNoncontactState, saveNoncontactState, reviewRequest, registerVolunteerActivity,
-  setRecruitment, assignVolunteer, releaseAssignment, saveGuidance, startAssignment,
+  setRecruitment, assignVolunteer, releaseAssignment, saveGuidance, getAssignmentStatus,
   beginResultReview, reviewVolunteerResult, certifyVolunteerResult, submitVolunteerResult,
   submitRequesterRequest as createRequesterRequest, reviseRequesterRequest, applyToActivity } from "./data/noncontactStore";
 import { isSupabaseConfigured, supabase, toSupabasePhone } from "./data/supabaseClient";
@@ -33,12 +31,12 @@ function App() {
   const [userState, setUserState] = useState(() => {
     if (isSupabaseConfigured) return { users: [], storageError: "" };
     try { return readUserState(window.localStorage); }
-    catch { return { users: sampleUsers, storageError: "브라우저 저장소에 접근할 수 없어 사용자 검증과 새 배정을 저장할 수 없습니다." }; }
+    catch { return { users: [], storageError: "브라우저 저장소에 접근할 수 없어 사용자 검증과 새 배정을 저장할 수 없습니다." }; }
   });
   const [operationState, setOperationState] = useState(() => {
     if (isSupabaseConfigured) return { data: emptyNoncontactState, storageError: "" };
     try { return readNoncontactState(window.localStorage); }
-    catch { return { data: initialNoncontactState, storageError: "브라우저 저장소에 접근할 수 없어 비대면 운영 변경사항을 저장할 수 없습니다." }; }
+    catch { return { data: emptyNoncontactState, storageError: "브라우저 저장소에 접근할 수 없어 비대면 운영 변경사항을 저장할 수 없습니다." }; }
   });
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
@@ -242,7 +240,6 @@ function App() {
         next = assignVolunteer(data, userState.users, fields.activityId, fields.studentId, fields.reason); break;
       case "release": next = releaseAssignment(data, fields.assignmentId, fields.reason); break;
       case "guidance": next = saveGuidance(data, fields.activityId, fields); break;
-      case "start": next = startAssignment(data, fields.assignmentId, fields.reason); break;
       case "begin-review": next = beginResultReview(data, fields.assignmentId); break;
       case "result-review": next = reviewVolunteerResult(data, fields.assignmentId, fields.decision, fields.reason, fields.recognizedMinutes); break;
       case "certify": next = certifyVolunteerResult(data, fields.assignmentId, fields.reference, fields.note); break;
@@ -281,15 +278,17 @@ function App() {
   const studentHomeData = useCallback(() => {
     const data = operationState.data;
     const assignments = data.assignments.filter((assignment) => assignment.studentId === studentProfile?.id);
-    const myActivities = assignments.map((assignment) => {
+    const assignedActivities = assignments.map((assignment) => {
       const activity = data.activities.find((item) => item.id === assignment.activityId);
       return activity && {
         ...activity,
         assignmentId: assignment.id,
-        assignmentStatus: assignment.status,
+        assignmentStatus: getAssignmentStatus(assignment, activity),
         submissions: assignment.submissions,
       };
     }).filter(Boolean);
+    const myActivities = assignedActivities.filter((activity) => activity.assignmentStatus !== "인증 완료");
+    const completedActivities = assignedActivities.filter((activity) => activity.assignmentStatus === "인증 완료");
     const myApplications = data.applications
       .filter((application) => application.studentId === studentProfile?.id &&
         !assignments.some((assignment) => assignment.activityId === application.activityId))
@@ -305,6 +304,7 @@ function App() {
       );
       return {
         ...activity,
+        status: assignment ? getAssignmentStatus(assignment, activity) : activity.status,
         target: request?.target || activity.target,
         applied: Boolean(application),
         applicationStatus: application ? "운영자 배정 대기" : "",
@@ -324,6 +324,7 @@ function App() {
       user: { name: studentProfile?.name || "" },
       summary: { monthlyCount: certified.length, totalMinutes, verifiedCount: certified.length },
       myActivities,
+      completedActivities,
       myApplications,
       activities,
       requests,

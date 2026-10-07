@@ -2,6 +2,8 @@ export const volunteerTypes = ["생활·디지털 안내", "생활·취미 키�
 export const requestStatuses = ["요청 접수", "운영자 검토", "승인", "반려", "수정 요청"];
 export const volunteerStatuses = ["모집 중", "봉사자 배정", "진행 중", "결과물 제출", "검토 중", "보완 요청", "재제출", "승인", "인증 완료", "취소"];
 
+export const emptyNoncontactState = { requests: [], activities: [], applications: [], assignments: [] };
+
 // 테스트 예시입니다. 실제 기관 승인, 신청, 제출 또는 1365 실적이 아닙니다.
 export const initialNoncontactState = {
   requests: [

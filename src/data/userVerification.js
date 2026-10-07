@@ -1,5 +1,3 @@
-import { sampleUsers } from "./users.js";
-
 export const verificationStatuses = { pending: "검증 대기", approved: "승인", rejected: "반려" };
 export const userStorageKey = "ieum.users.v1";
 
@@ -23,12 +21,12 @@ function validUsers(users) {
 export function readUserState(storage) {
   try {
     const saved = storage.getItem(userStorageKey);
-    if (saved === null) return { users: sampleUsers, storageError: "" };
+    if (saved === null) return { users: [], storageError: "" };
     const users = JSON.parse(saved);
     if (!validUsers(users)) throw new Error("invalid saved users");
     return { users, storageError: "" };
   } catch {
-    return { users: sampleUsers, storageError: "저장된 사용자를 불러올 수 없어 테스트 예시를 표시합니다. 기존 데이터 보호를 위해 검증 처리와 새 매칭을 중단했습니다. 브라우저 저장 설정과 데이터를 확인해주세요." };
+    return { users: [], storageError: "저장된 사용자를 불러올 수 없습니다. 기존 데이터 보호를 위해 검증 처리와 새 매칭을 중단했습니다. 브라우저 저장 설정과 데이터를 확인해주세요." };
   }
 }
 

@@ -10,33 +10,35 @@ const roles = [
 const AGE_GROUPS = ["60대", "70대", "80대", "90대 이상"];
 
 const CSS = `
-.rq-app{--ink:#172B3A;--sub:#5B6B77;--line:#DDE5EA;--bg:#F5F8FA;--card:#fff;--brand:#0F7B8A;--brand-soft:#E3F2F4;max-width:480px;min-height:100vh;margin:0 auto;background:var(--bg);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:17px;line-height:1.55;display:flex;flex-direction:column}
+.rq-app{--ink:#25404A;--sub:#66777C;--line:#E3E8E4;--bg:#FFF9F4;--card:#fff;--brand:#168A88;--brand-soft:#E6F6F1;width:100%;max-width:480px;min-height:100vh;min-height:100svh;margin:0 auto;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:17px;line-height:1.55;display:flex;flex-direction:column}
 .rq-app *{box-sizing:border-box}
 .rq-app button{font:inherit;color:inherit;cursor:pointer}
 .rq-app :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
-.rq-header{display:flex;align-items:center;gap:8px;padding:14px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+.rq-header{display:flex;align-items:center;gap:8px;padding:14px 16px;background:#FFFFFFE8;border-bottom:1px solid var(--line);border-radius:0 0 22px 22px}
 .rq-logo{font-weight:800;font-size:22px;color:var(--brand);letter-spacing:-.02em}
 .rq-back{border:0;background:none;font-size:30px;line-height:1;padding:0 8px 4px 0}
 .rq-main{padding:20px 16px 32px;display:flex;flex-direction:column;gap:20px;flex:1}
-.rq-hero{background:var(--brand);color:#fff;border-radius:20px;padding:24px 20px}
+.rq-hero{background:linear-gradient(145deg,#168A88,#52B79E);color:#fff;border-radius:28px;padding:24px 20px;box-shadow:0 12px 28px #168A881A}
 .rq-hero h1,.rq-hero h2{margin:0 0 8px;font-size:24px;line-height:1.35;color:inherit}
 .rq-hero p{margin:0;opacity:.9;font-size:16px}
 .rq-entry-options{display:grid;gap:10px}
-.rq-entry-card{width:100%;min-height:76px;padding:14px 16px;text-align:left;border:2px solid var(--line);border-radius:14px;background:var(--card);font-weight:700;font-size:18px}
+.rq-entry-card{width:100%;min-height:76px;padding:16px;text-align:left;border:2px solid var(--line);border-radius:22px;background:var(--card);font-weight:700;font-size:18px;box-shadow:0 5px 16px #25404A08}
 .rq-entry-card.on{border-color:var(--brand);background:var(--brand-soft)}
 .rq-entry-card span{display:block;color:var(--sub);font-size:14px;font-weight:400}
 .rq-field{display:flex;flex-direction:column;gap:8px;font-weight:600}
-.rq-field input{width:100%;font:inherit;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--card);font-weight:400}
-.rq-field select{width:100%;font:inherit;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--card);font-weight:400}
+.rq-field input{width:100%;font:inherit;border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:var(--card);font-weight:400}
+.rq-field select{width:100%;font:inherit;border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:var(--card);font-weight:400}
 .rq-note{margin:0;color:var(--sub);font-size:14px}
-.rq-btn{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 16px;font-weight:600}
+.rq-btn{border:1px solid var(--line);background:var(--card);border-radius:18px;padding:10px 16px;font-weight:600;box-shadow:0 5px 14px #25404A0A}
 .rq-btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
 .rq-btn.big{width:100%;min-height:56px;font-size:18px}
 .rq-btn:disabled{opacity:.45;cursor:not-allowed}
 .rq-link{border:0;background:transparent;color:var(--sub);text-decoration:underline;text-underline-offset:3px}
 .rq-footer{display:grid;gap:10px;padding:12px 16px 24px}
-.rq-alert{padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.rq-alert{padding:14px 16px;border:1px solid var(--line);border-radius:20px;background:var(--card)}
 .rq-alert[role="alert"]{border-color:#B4532A;color:#7C3217}
+.rq-welcome .rq-main{justify-content:space-evenly;padding-top:clamp(24px,8vh,80px);padding-bottom:clamp(24px,8vh,80px);gap:clamp(20px,5vh,40px)}
+.rq-welcome .rq-hero{padding-top:clamp(36px,8vh,76px);padding-bottom:clamp(36px,8vh,76px)}
 `;
 
 export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin, startupError, localMode }) {
@@ -107,7 +109,7 @@ export default function LoginHome({ onLogin, onRegister, onVerify, onEnterAdmin,
   }
 
   return (
-    <div className="rq-app">
+    <div className={`rq-app${mode === "welcome" ? " rq-welcome" : ""}`}>
       <style>{CSS}</style>
       <header className="rq-header">
         {mode !== "welcome" && <button className="rq-back" type="button" onClick={() => { setMode("welcome"); setError(""); }} aria-label="처음으로 돌아가기">‹</button>}

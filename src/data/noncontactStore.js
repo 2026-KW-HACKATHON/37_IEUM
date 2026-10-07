@@ -1,4 +1,4 @@
-import { initialNoncontactState, volunteerTypes, requestStatuses, volunteerStatuses } from "./noncontact.js";
+import { emptyNoncontactState, volunteerTypes, requestStatuses, volunteerStatuses } from "./noncontact.js";
 
 export const noncontactStorageKey = "ieum.noncontact.v1";
 const text = (value) => typeof value === "string" && value.trim().length > 0;
@@ -8,9 +8,13 @@ const timestamp = (value) => text(value) && Number.isFinite(Date.parse(value));
 const id = () => globalThis.crypto.randomUUID();
 const now = () => new Date().toISOString();
 const minutes = (value) => Number.isSafeInteger(value) && value >= 0;
+const seoulDate = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date());
 function requireText(value, message) { if (!text(value)) throw new Error(message); return value.trim(); }
 function history(entry) { return entry && text(entry.action) && text(entry.reason) && timestamp(entry.changedAt) && entry.actorRole === "admin"; }
 function addHistory(item, action, reason) { return [...item.history, { action, reason, changedAt: now(), actorRole: "admin" }]; }
+export function getAssignmentStatus(assignment, activity, today = seoulDate()) {
+  return assignment.status === "봉사자 배정" && activity.startDate <= today ? "진행 중" : assignment.status;
+}
 function activityOf(state, activityId) {
   const activity = state.activities.find((item) => item.id === activityId);
   if (!activity || activity.status === "취소") throw new Error("운영 가능한 봉사활동을 찾을 수 없습니다.");
@@ -69,12 +73,12 @@ export function isValidNoncontactState(state) {
 export function readNoncontactState(storage) {
   try {
     const saved = storage.getItem(noncontactStorageKey);
-    if (saved === null) return { data: initialNoncontactState, storageError: "" };
+    if (saved === null) return { data: emptyNoncontactState, storageError: "" };
     const data = JSON.parse(saved);
     if (!isValidNoncontactState(data)) throw new Error("invalid noncontact state");
     return { data, storageError: "" };
   } catch {
-    return { data: initialNoncontactState, storageError: "저장된 비대면 데이터를 읽을 수 없어 테스트 예시를 표시합니다. 기존 기록 보호를 위해 변경 저장을 중단했습니다." };
+    return { data: emptyNoncontactState, storageError: "저장된 비대면 데이터를 읽을 수 없습니다. 기존 기록 보호를 위해 변경 저장을 중단했습니다." };
   }
 }
 export function saveNoncontactState(storage, state) {
@@ -212,12 +216,14 @@ export function assignVolunteer(state, users, activityId, studentId, reason) {
   reason = requireText(reason, "배정 사유를 입력해주세요.");
   const assignment = { id: id(), activityId, studentId, assignedAt: now(), status: "봉사자 배정", submissions: [],
     history: [{ action: "봉사자 배정", reason, changedAt: now(), actorRole: "admin" }] };
+  assignment.status = getAssignmentStatus(assignment, activity);
   return withAssignment({ ...state, assignments: [...state.assignments, assignment] }, assignment);
 }
 
 export function releaseAssignment(state, assignmentId, reason) {
   const assignment = assignmentOf(state, assignmentId);
-  if (assignment.status !== "봉사자 배정") throw new Error("활동 시작 전 배정만 해제할 수 있습니다.");
+  const activity = activityOf(state, assignment.activityId);
+  if (getAssignmentStatus(assignment, activity) !== "봉사자 배정") throw new Error("활동 시작 전 배정만 해제할 수 있습니다.");
   reason = requireText(reason, "배정 해제 사유를 입력해주세요.");
   const next = { ...state, assignments: state.assignments.filter((item) => item.id !== assignmentId), activities: state.activities.map((item) =>
     item.id === assignment.activityId ? { ...item, history: addHistory(item, "배정 해제", `${assignment.studentId}: ${reason}`) } : item) };
@@ -232,23 +238,16 @@ export function saveGuidance(state, activityId, guidance) {
   return { ...state, activities: state.activities.map((item) => item.id === activityId ?
     { ...item, guidance: next, history: addHistory(item, "활동 안내 저장", "활동 방법·주의사항·제출 안내 갱신") } : item) };
 }
-export function startAssignment(state, assignmentId, reason) {
-  const assignment = assignmentOf(state, assignmentId);
-  const activity = activityOf(state, assignment.activityId);
-  if (assignment.status !== "봉사자 배정") throw new Error("배정된 봉사자만 활동을 시작할 수 있습니다.");
-  if (!Object.values(activity.guidance).every(text)) throw new Error("사전교육 / 활동 안내를 먼저 저장해주세요.");
-  reason = requireText(reason, "활동 시작 확인 사유를 입력해주세요.");
-  return withAssignment(state, { ...assignment, status: "진행 중", history: addHistory(assignment, "활동 시작 확인", reason) });
-}
-
 // 학생 화면 연결용: 실제 제출 권한·파일 저장은 서버에서 구현해야 합니다.
 export function submitVolunteerResult(state, assignmentId, studentId, fields) {
   const assignment = assignmentOf(state, assignmentId);
-  if (assignment.studentId !== studentId || !["진행 중", "보완 요청"].includes(assignment.status)) throw new Error("본인에게 배정된 진행 중 또는 보완 요청 활동만 제출할 수 있습니다.");
+  const activity = activityOf(state, assignment.activityId);
+  const status = getAssignmentStatus(assignment, activity);
+  if (assignment.studentId !== studentId || !["진행 중", "보완 요청"].includes(status)) throw new Error("본인에게 배정된 진행 중 또는 보완 요청 활동만 제출할 수 있습니다.");
   const submission = { id: id(), result: requireText(fields.result, "결과물이 필요합니다."), activityLog: requireText(fields.activityLog, "활동일지가 필요합니다."),
     evidence: requireText(fields.evidence, "증빙자료가 필요합니다."), workedMinutes: fields.workedMinutes, submittedAt: now(), isDemo: Boolean(fields.isDemo) };
   if (!minutes(fields.workedMinutes) || fields.workedMinutes === 0) throw new Error("활동 시간을 양의 정수(분)로 입력해주세요.");
-  return withAssignment(state, { ...assignment, status: assignment.status === "보완 요청" ? "재제출" : "결과물 제출", submissions: [...assignment.submissions, submission] });
+  return withAssignment(state, { ...assignment, status: status === "보완 요청" ? "재제출" : "결과물 제출", submissions: [...assignment.submissions, submission] });
 }
 export function beginResultReview(state, assignmentId) {
   const assignment = assignmentOf(state, assignmentId);

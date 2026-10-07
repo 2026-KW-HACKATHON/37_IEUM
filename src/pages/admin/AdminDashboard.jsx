@@ -6,7 +6,7 @@ import SubmissionManagement from "./SubmissionManagement";
 import { volunteerTypes } from "../../data/noncontact";
 
 const ADMIN_CSS = `
-.ieum-admin{--ink:#172B3A;--sub:#5B6B77;--line:#DDE5EA;--bg:#F5F8FA;--card:#fff;--brand:#0F7B8A;--brand-soft:#E3F2F4;max-width:480px;min-height:100vh;margin:0 auto;background:var(--bg);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:16px;line-height:1.55;display:flex;flex-direction:column}
+.ieum-admin{--ink:#172B3A;--sub:#5B6B77;--line:#DDE5EA;--bg:#F5F8FA;--card:#fff;--brand:#0F7B8A;--brand-soft:#E3F2F4;width:100%;max-width:480px;min-height:100vh;min-height:100svh;margin:0 auto;background:var(--bg);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:16px;line-height:1.55;display:flex;flex-direction:column}
 .ieum-admin *{box-sizing:border-box}
 .ieum-admin button,.ieum-admin input,.ieum-admin select,.ieum-admin textarea{font:inherit}
 .ieum-admin button{cursor:pointer}
@@ -16,8 +16,8 @@ const ADMIN_CSS = `
 .ieum-admin .rq-header strong{font-size:16px}
 .ieum-admin .rq-logout{margin-left:auto;border:0;background:transparent;color:var(--sub);font-size:14px}
 .ieum-admin main{padding:16px;display:flex;flex-direction:column;gap:14px}
-.ieum-admin nav{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px}
-.ieum-admin nav button{flex:0 0 auto;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);white-space:nowrap}
+.ieum-admin nav{display:flex;flex-direction:column;gap:8px;padding:2px 0 8px}
+.ieum-admin nav button{width:100%;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);text-align:left}
 .ieum-admin nav button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .ieum-admin main>p{margin:0;color:var(--sub);font-size:14px}
 .ieum-admin main>p[role="alert"]{padding:12px;border:1px solid #F0CDBE;border-radius:12px;background:#FBEBE3;color:#7C3217}
@@ -27,10 +27,10 @@ const ADMIN_CSS = `
 .ieum-admin h2{font-size:19px;margin:0 0 12px}
 .ieum-admin h3{font-size:17px;margin:16px 0 8px}
 .ieum-admin h4{font-size:16px;margin:14px 0 8px}
-.ieum-admin dl{margin:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px}
+.ieum-admin dl{margin:0;display:grid;grid-template-columns:1fr;gap:2px 12px}
 .ieum-admin dl>div{display:contents}
 .ieum-admin dt{color:var(--sub)}
-.ieum-admin dd{margin:0;font-weight:700;text-align:right}
+.ieum-admin dd{margin:0 0 8px;font-weight:700;text-align:left;overflow-wrap:anywhere}
 .ieum-admin article{margin-top:12px;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:14px}
 .ieum-admin article h3{margin:0 0 6px}
 .ieum-admin article details{margin-top:10px}

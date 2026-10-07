@@ -24,7 +24,7 @@ function SubmissionManagement({ data, users, onCommand, onOpenFile, disabled }) 
       const activity = data.activities.find((item) => item.id === assignment.activityId);
       const latest = assignment.submissions.at(-1);
       return <article key={assignment.id}>
-        <h3>{activity.title}</h3><p>{users.find((user) => user.id === assignment.studentId)?.name || assignment.studentId} · {assignment.status}</p>
+        <h3>{activity.title}</h3><p>{users.find((user) => user.id === assignment.studentId)?.name || "사용자 정보 없음"} · {assignment.status}</p>
         <details><summary>결과물 / 검토 이력 보기</summary>
           <p>필수 결과물: {activity.resultType} · 필수 증빙: {activity.evidence}</p>
           <p>활동 인정 기준: {activity.recognitionCriteria}</p>

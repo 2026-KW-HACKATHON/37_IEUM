@@ -67,6 +67,7 @@ const defaultLoadHome = () =>
     user: { name: "" },
     summary: { monthlyCount: 0, totalMinutes: 0, verifiedCount: 0 },
     myActivities: [],
+    completedActivities: [],
     requests: [],
     events: [],
   });
@@ -140,7 +141,7 @@ function StudentHome({
     );
   }
 
-  const { user, summary, myActivities, requests } = data;
+  const { user, summary, myActivities, completedActivities = [], requests } = data;
   const userName = profile?.name || user.name;
   const selectedActivity = data.activities?.find((activity) => activity.id === selectedActivityId);
 
@@ -233,6 +234,18 @@ function StudentHome({
         />
 
         <Section
+          title="완료한 활동"
+          items={completedActivities}
+          empty="인증 완료된 활동이 여기에 표시돼요."
+          render={(a) => (
+            <div key={a.id} className="ih-item">
+              <div><b>{a.title}</b><small>{a.period} · 인증 완료</small></div>
+              <button onClick={() => setSelectedActivityId(a.id)}>활동 상세</button>
+            </div>
+          )}
+        />
+
+        <Section
           title="신청한 활동"
           items={data.myApplications || []}
           empty="운영자 배정을 기다리는 신청이 없어요."
@@ -247,7 +260,7 @@ function StudentHome({
         <Section
           title="모집 중인 도움"
           items={requests}
-          empty="현재 모집 중인 도움이 없어요."
+          empty="운영자가 모집을 시작한 도움이 생기면 여기에서 신청할 수 있어요."
           render={(r) => (
             <div key={r.id} className="ih-item">
               <div>
@@ -363,7 +376,7 @@ function StudentActivityDetail({ activity, profile, actionError, onBack, onSubmi
                 {submissionError && <p role="alert">{submissionError}</p>}
                 {submissionMessage && <p role="status">{submissionMessage}</p>}
                 <label>결과물 파일명 또는 공유 링크
-                  <input name="result" maxLength="500" placeholder="예) 안내서.pdf 또는 공유 링크" />
+                  <input name="result" maxLength="500" placeholder="예) 안내서.pdf 또는 공유 링크" required />
                 </label>
                 <label>결과물 파일 업로드 (선택)
                   <input name="resultFile" type="file" accept=".pdf,image/jpeg,image/png,image/webp,video/mp4" onChange={(event) => {
@@ -376,7 +389,7 @@ function StudentActivityDetail({ activity, profile, actionError, onBack, onSubmi
                   <textarea name="activityLog" required maxLength="3000" rows="4" placeholder="수행한 활동과 진행 내용을 기록해 주세요." />
                 </label>
                 <label>증빙자료 설명 또는 보관 링크
-                  <input name="evidence" maxLength="1000" placeholder="예) 제작 과정 사진 파일명 또는 링크" />
+                  <input name="evidence" maxLength="1000" placeholder="예) 제작 과정 사진 파일명 또는 링크" required />
                 </label>
                 <label>증빙자료 파일 업로드 (선택)
                   <input name="evidenceFile" type="file" accept=".pdf,image/jpeg,image/png,image/webp,video/mp4" onChange={(event) => {
@@ -395,7 +408,7 @@ function StudentActivityDetail({ activity, profile, actionError, onBack, onSubmi
             {["봉사자 배정", "결과물 제출", "검토 중", "재제출", "승인", "인증 완료"].includes(activity.assignmentStatus) &&
               !["진행 중", "보완 요청"].includes(activity.assignmentStatus) &&
               <p className="ih-state" role="status">{activity.assignmentStatus === "봉사자 배정"
-                ? "운영자가 활동을 시작 처리하고 안내를 마치면 활동 결과를 제출할 수 있어요."
+                ? `활동 시작일(${activity.startDate})부터 결과물을 제출할 수 있어요.`
                 : activity.assignmentStatus === "승인"
                   ? "결과물이 승인되었어요. 운영자의 최종 인증을 기다리고 있습니다."
                   : activity.assignmentStatus === "인증 완료"
@@ -425,20 +438,20 @@ function StudentActivityDetail({ activity, profile, actionError, onBack, onSubmi
 }
 
 const css = `
-.ih{--ink:#172B3A;--sub:#5B6B77;--line:#DDE5EA;--bg:#F5F8FA;--card:#fff;--brand:#0F7B8A;--brand-soft:#E3F2F4;max-width:480px;min-height:100vh;margin:0 auto;background:var(--bg);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:17px;line-height:1.55;display:flex;flex-direction:column}
+.ih{--ink:#25404A;--sub:#66777C;--line:#E3E8E4;--bg:#FFF9F4;--card:#fff;--brand:#168A88;--brand-soft:#E6F6F1;width:100%;max-width:480px;min-height:100vh;min-height:100svh;margin:0 auto;background:linear-gradient(180deg,#FFF9F4 0%,#F4FBF8 100%);color:var(--ink);font-family:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;font-size:17px;line-height:1.55;display:flex;flex-direction:column}
 .ih *{box-sizing:border-box}
 .ih button{font:inherit;color:inherit;cursor:pointer}
 .ih :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
-.ih .rq-header{display:flex;align-items:center;gap:8px;padding:14px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
+.ih .rq-header{display:flex;align-items:center;gap:8px;padding:14px 16px;background:#FFFFFFE8;border-bottom:1px solid var(--line);border-radius:0 0 22px 22px;position:sticky;top:0;z-index:2}
 .ih .ih-role{margin-left:auto;color:var(--sub);font-size:15px}
 .ih .ih-logout{margin-left:8px;border:0;background:transparent;color:var(--sub);font-size:14px}
 .ih .rq-main{padding:20px 16px 32px;display:flex;flex-direction:column;gap:20px;flex:1}
-.ih .rq-hero{background:var(--brand);color:#fff;border-radius:20px;padding:24px 20px}
+.ih .rq-hero{background:linear-gradient(145deg,#168A88,#52B79E);color:#fff;border-radius:28px;padding:24px 20px;box-shadow:0 12px 28px #168A881A}
 .ih .rq-hero h1{margin:0 0 8px;font-size:24px;line-height:1.35;color:inherit}
 .ih .rq-hero p{margin:0;opacity:.9;font-size:16px}
 .ih .rq-h3{font-size:18px;margin:0 0 10px}
 .ih .rq-alert{padding:14px 16px;border:1px solid #DDE5EA;border-radius:14px;background:#fff;color:#5B6B77;margin:0}
-.ih .rq-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ih .rq-summary{display:grid;grid-template-columns:1fr;gap:8px}
 .ih .rq-summary div{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 10px;display:flex;flex-direction:column;gap:4px}
 .ih .rq-summary small{color:var(--sub);font-size:13px}
 .ih .rq-summary b{font-size:15px;line-height:1.4}
@@ -446,20 +459,20 @@ const css = `
 .ih button:disabled{opacity:.5;cursor:default}
 .ih .ih-link{align-self:flex-start;border:0;background:transparent;color:var(--brand);padding:0;min-height:44px;font-weight:600}
 .ih section>h2{font-size:18px;margin:0 0 10px}
-.ih .ih-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px;margin-bottom:10px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.ih .ih-item{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:16px;margin-bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 7px 20px #25404A08}
 .ih .ih-item>div:first-child{min-width:0;flex:1}
 .ih .ih-item b{display:block;font-size:16px}
 .ih .ih-item small{display:block;color:var(--sub);font-size:14px;margin-top:3px}
-.ih .ih-item button{flex-shrink:0;font-size:14px}
-.ih .ih-actions{display:flex;gap:6px}
+.ih .ih-item button{width:100%;font-size:14px}
+.ih .ih-actions{display:flex;flex-direction:column;gap:6px}
 .ih .ih-actions button{font-size:13px;padding:8px}
 .ih .ih-back{margin-right:auto}
-.ih .ih-detail-card{padding:16px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.ih .ih-detail-card{padding:18px;background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:0 7px 20px #25404A08}
 .ih .ih-detail-card h2,.ih .ih-detail-card h3{margin:0 0 12px;font-size:18px}
 .ih .ih-detail-card h3{margin-top:16px;font-size:16px}
-.ih .ih-detail-card dl{display:grid;grid-template-columns:minmax(90px, auto) 1fr;gap:8px 12px;margin:0}
+.ih .ih-detail-card dl{display:grid;grid-template-columns:1fr;gap:2px 12px;margin:0}
 .ih .ih-detail-card dt{color:var(--sub)}
-.ih .ih-detail-card dd{margin:0;overflow-wrap:anywhere}
+.ih .ih-detail-card dd{margin:0 0 8px;overflow-wrap:anywhere}
 .ih .ih-latest{margin-top:16px;padding:12px;border-radius:10px;background:var(--bg)}
 .ih .ih-latest p{margin:6px 0;overflow-wrap:anywhere}
 .ih .ih-submission{display:grid;gap:12px;margin-top:16px}
@@ -469,9 +482,8 @@ const css = `
 .ih .ih-upload-note,.ih .ih-state{margin:0;padding:12px;border-radius:10px;background:var(--bg);color:var(--sub);font-size:14px}
 .ih .ih-item .ih-primary{background:var(--ink);border-color:var(--ink);color:#fff}
 .ih .ih-item .ih-category{color:var(--brand);font-weight:700}
-.ih .ih-empty{color:var(--sub);font-size:15px;background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:18px;margin:0}
+.ih .ih-empty{color:var(--sub);font-size:15px;background:var(--card);border:1px dashed #D6E6DE;border-radius:22px;padding:20px;margin:0}
 .ih .ih-state{text-align:center;padding:24px 16px}
-@media(max-width:360px){.ih .rq-summary{grid-template-columns:1fr}.ih .rq-summary div{padding:10px 12px}}
 `;
 
 export default StudentHome;

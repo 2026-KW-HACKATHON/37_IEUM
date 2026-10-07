@@ -49,7 +49,7 @@ function RequestManagement({ data, users, onCommand, disabled }) {
               <textarea id={`reason-${request.id}`} name="reason" required disabled={disabled} /></div>
             <button disabled={disabled}>의뢰 검토 저장</button>
           </form>}
-          {activity && <p>연결된 봉사활동: {activity.title} ({activity.id})</p>}
+          {activity && <p>연결된 봉사활동: {activity.title}</p>}
           {request.status === "수정 요청" && <p>의뢰자 수정·재접수 기능 연결을 기다리는 상태입니다.</p>}
           {request.status === "반려" && <p>반려된 의뢰입니다. 이 의뢰에서는 봉사활동을 등록할 수 없습니다.</p>}
           {!activity && request.status === "승인" && <form onSubmit={(event) => submit(event, "register", request.id)}>

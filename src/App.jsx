@@ -7,6 +7,7 @@ import VerificationPending from "./components/VerificationPending";
 import { createPasswordCredential, normalizePhone, phoneLoginEmail, verifyPassword } from "./data/accountAuth";
 import { readUserState, reviewStudent, reviewRequesterAddress, saveUsers } from "./data/userVerification";
 import { editLocalUser, deleteLocalUser } from "./data/userManagement";
+import { getStudentSummary } from "./data/studentSummary";
 import { readNoncontactState, saveNoncontactState, reviewRequest, registerVolunteerActivity,
   setRecruitment, assignVolunteer, releaseAssignment, saveGuidance, getAssignmentStatus,
   beginResultReview, reviewVolunteerResult, certifyVolunteerResult, submitVolunteerResult,
@@ -302,7 +303,25 @@ function App() {
         await persistRequesterRequest(savedRequest);
         next = await fetchNoncontactState(currentUser);
       } else if (currentUser.role === "admin") {
-        await persistAdminState(next);
+        try {
+          await persistAdminState(next, data.revision);
+        } catch (failure) {
+          if (failure.code === "40001") {
+            try {
+              const latest = await fetchNoncontactState(currentUser);
+              setOperationState({ data: latest, storageError: "" });
+            } catch {
+              throw new Error("다른 사용자가 데이터를 변경했고 최신 정보를 불러오지 못했습니다. 새로고침 후 다시 확인해주세요.");
+            }
+          }
+          throw failure;
+        }
+        // 다음 저장에서도 서버가 확인한 최신 버전을 사용합니다.
+        try { next = await fetchNoncontactState(currentUser); }
+        catch {
+          setOperationState({ data: next, storageError: "저장은 완료됐지만 최신 정보를 불러오지 못했습니다. 새로고침 후 다시 작업해주세요." });
+          return next;
+        }
       }
     } else {
       saveNoncontactState(window.localStorage, next);
@@ -358,12 +377,9 @@ function App() {
       activity.recruitmentOpen && !["승인", "인증 완료", "취소"].includes(activity.status) &&
       data.assignments.filter((assignment) => assignment.activityId === activity.id).length < activity.capacity
     );
-    const certified = assignments.filter((assignment) => assignment.status === "인증 완료");
-    const totalMinutes = certified.reduce((sum, assignment) =>
-      sum + (assignment.submissions.at(-1)?.review?.recognizedMinutes || 0), 0);
     return Promise.resolve({
       user: { name: studentProfile?.name || "" },
-      summary: { monthlyCount: certified.length, totalMinutes, verifiedCount: certified.length },
+      summary: getStudentSummary(assignments),
       myActivities,
       completedActivities,
       myApplications,

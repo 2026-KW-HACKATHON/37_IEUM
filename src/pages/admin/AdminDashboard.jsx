@@ -47,7 +47,7 @@ const ADMIN_CSS = `
 @media(min-width:600px){.ieum-admin{box-shadow:0 0 48px #172B3A12}}
 `;
 
-function AdminDashboard({ data, users, onCommand, onVerificationChange, onAddressVerificationChange, onOpenFile, userStorageError, storageError, onLogout }) {
+function AdminDashboard({ data, users, onCommand, onVerificationChange, onAddressVerificationChange, onOpenFile, onManageUser, onLoadUserManagementAudit, userStorageError, storageError, onLogout }) {
   const [view, setView] = useState("dashboard");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -94,6 +94,7 @@ function AdminDashboard({ data, users, onCommand, onVerificationChange, onAddres
       {view === "volunteers" && <VolunteerManagement data={data} users={users} onCommand={execute} disabled={Boolean(storageError)} userStorageError={userStorageError} />}
       {view === "submissions" && <SubmissionManagement data={data} users={users} onCommand={execute} onOpenFile={onOpenFile} disabled={Boolean(storageError)} />}
       {view === "users" && <UserManagement users={users} onVerificationChange={onVerificationChange}
+        data={data} onManageUser={onManageUser} onLoadAudit={onLoadUserManagementAudit} operationStorageError={storageError}
         onAddressVerificationChange={onAddressVerificationChange} onOpenFile={onOpenFile} storageError={userStorageError} />}
     </main>
   </div>;

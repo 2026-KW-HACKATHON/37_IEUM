@@ -6,6 +6,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import VerificationPending from "./components/VerificationPending";
 import { createPasswordCredential, normalizePhone, phoneLoginEmail, verifyPassword } from "./data/accountAuth";
 import { readUserState, reviewStudent, reviewRequesterAddress, saveUsers } from "./data/userVerification";
+import { editLocalUser, deleteLocalUser } from "./data/userManagement";
 import { readNoncontactState, saveNoncontactState, reviewRequest, registerVolunteerActivity,
   setRecruitment, assignVolunteer, releaseAssignment, saveGuidance, getAssignmentStatus,
   beginResultReview, reviewVolunteerResult, certifyVolunteerResult, submitVolunteerResult,
@@ -15,6 +16,7 @@ import {
   applyToRemoteActivity, emptyNoncontactState, fetchNoncontactState, fetchProfile, fetchUsers,
   createPrivateFileUrl, persistAdminState, persistRequesterRequest, saveProfile, submitRemoteActivityResult,
   uploadPrivateFile,
+  manageRemoteUser, fetchUserManagementAudit,
 } from "./data/supabaseStore";
 
 function isProfileApproved(profile) {
@@ -239,6 +241,32 @@ function App() {
     else saveUsers(window.localStorage, nextUsers);
     setUserState({ users: nextUsers, storageError: "" });
   }
+  async function manageUser(action, userId, fields) {
+    if (currentUser?.role !== "admin") throw new Error("운영자만 회원을 관리할 수 있습니다.");
+    if (userState.storageError) throw new Error(userState.storageError);
+    if (action === "delete" && operationState.storageError) throw new Error(operationState.storageError);
+    if (isSupabaseConfigured) {
+      const result = await manageRemoteUser(action, userId, fields);
+      // 서버 처리 성공 이후 목록 조회 실패를 처리 실패와 혼동하지 않습니다.
+      try { setUserState({ users: await fetchUsers(), storageError: "" }); }
+      catch { return { warning: "회원 처리는 완료됐지만 목록 갱신에 실패했습니다. 새로고침해서 확인해주세요." }; }
+      return result;
+    }
+    const users = action === "update"
+      ? editLocalUser(userState.users, userId, fields, currentUser)
+      : deleteLocalUser(userState.users, userId, fields, operationState.data, currentUser);
+    saveUsers(window.localStorage, users);
+    setUserState({ users, storageError: "" });
+    return { success: true };
+  }
+  async function loadUserManagementAudit() {
+    if (isSupabaseConfigured) return fetchUserManagementAudit();
+    return userState.users.flatMap((user) => (user.managementHistory || []).map((entry) => ({
+      id: `${user.id}-${entry.changedAt}`, target_id: user.id, actor_id: entry.actorId,
+      action: "update", reason: entry.reason, changed_fields: entry.changedFields,
+      status: "completed", created_at: entry.changedAt,
+    })));
+  }
   async function updateOperation(command, fields) {
     if (operationState.storageError) throw new Error(operationState.storageError);
     const data = operationState.data;
@@ -435,6 +463,7 @@ function App() {
     onRegister={registerUser}
   />;
   if (currentUser?.role === "admin") return <AdminDashboard data={operationState.data} users={userState.users}
+    onManageUser={manageUser} onLoadUserManagementAudit={loadUserManagementAudit}
     onCommand={updateOperation} onVerificationChange={updateUserVerification}
     onAddressVerificationChange={updateRequesterAddress}
     onOpenFile={openPrivateFile}

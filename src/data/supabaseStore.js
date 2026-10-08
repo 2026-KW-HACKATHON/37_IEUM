@@ -58,7 +58,32 @@ function profileToRow(user) {
 export async function fetchProfile(userId) {
   const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
   if (error) throw new Error(error.message || "사용자 프로필을 불러오지 못했습니다.");
+  if (data.account_management_lock) throw new Error("운영자가 계정을 처리 중입니다. 잠시 후 다시 로그인해주세요.");
   return profileFromRow(data);
+}
+
+export async function manageRemoteUser(action, userId, fields) {
+  const { data, error } = await supabase.functions.invoke("admin-user-management", {
+    body: { action, userId, ...fields },
+  });
+  if (error) {
+    let message = "회원 관리 서버에 연결하지 못했습니다. Edge Function 배포와 DB 설정을 확인해주세요.";
+    try {
+      const result = await error.context?.json();
+      if (result?.error) message = result.error;
+    } catch { /* 서버 응답이 JSON이 아닌 경우 기본 안내를 사용합니다. */ }
+    throw new Error(message);
+  }
+  if (!data?.success) throw new Error(data?.error || "회원 처리를 완료하지 못했습니다.");
+  return data;
+}
+
+export async function fetchUserManagementAudit() {
+  const { data, error } = await supabase.from("user_management_audit")
+    .select("id,actor_id,target_id,action,reason,changed_fields,status,created_at")
+    .order("created_at", { ascending: false }).limit(100);
+  if (error) throw new Error("처리 이력을 불러오지 못했습니다. DB 설정을 확인해주세요.");
+  return data;
 }
 
 export async function fetchUsers() {

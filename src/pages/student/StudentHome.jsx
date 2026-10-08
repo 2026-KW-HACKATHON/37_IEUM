@@ -154,7 +154,7 @@ function Submit({ a, busy, canUpload, onSubmit }) {
   );
 }
 
-export default function StudentHome({ loadHome, onApply, onSubmitResult, onUploadFile, onOpenFile, allowFileUpload, onLogout }) {
+export default function StudentHome({ loadHome, onApply, onSubmitResult, onUploadFile, onOpenFile, allowFileUpload, syncError, onLogout }) {
   const [view, setView] = useState("list"); // list | my | detail | submit
   const [id, setId] = useState(null);
   const [filter, setFilter] = useState("전체");
@@ -245,6 +245,7 @@ export default function StudentHome({ loadHome, onApply, onSubmitResult, onUploa
       </header>
       <main className="st-main">
         {!back && <h1 className="st-title">{title}</h1>}
+        {syncError && <p className="st-alert" role="alert">{syncError}</p>}
         {notice && <p className="st-alert" role="alert">{notice}</p>}
         {body}
       </main>

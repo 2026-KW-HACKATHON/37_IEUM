@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { volunteerTypes, volunteerStatuses } from "../../data/noncontact";
+import { volunteerTypes, volunteerTypeLabels, volunteerStatuses } from "../../data/noncontact";
 import { verificationStatuses } from "../../data/userVerification";
 import { getAssignmentStatus } from "../../data/noncontactStore";
 
@@ -15,7 +15,7 @@ function VolunteerManagement({ data, users, onCommand, disabled, userStorageErro
   return <section>
     <h2>봉사활동·모집·배정 관리</h2>
     <label htmlFor="volunteer-filter">봉사 유형 </label>
-    <select id="volunteer-filter" value={filter} onChange={(event) => setFilter(event.target.value)}>{["전체", ...volunteerTypes].map((value) => <option key={value}>{value}</option>)}</select>
+    <select id="volunteer-filter" value={filter} onChange={(event) => setFilter(event.target.value)}>{["전체", ...volunteerTypes].map((value) => <option key={value} value={value}>{volunteerTypeLabels[value] || value}</option>)}</select>
     <p>조회 결과: {activities.length}건</p>
     {userStorageError && <p role="alert">{userStorageError}</p>}
     {!activities.length && <p>등록된 봉사활동이 없습니다.</p>}
@@ -28,7 +28,7 @@ function VolunteerManagement({ data, users, onCommand, disabled, userStorageErro
       const candidates = users.filter((user) => user.role === "student" && user.verificationStatus === "approved" &&
         applications.some((item) => item.studentId === user.id) && !assignments.some((item) => item.studentId === user.id));
       return <article key={activity.id}>
-        <h3>{activity.title}</h3><p>{activity.type} · {activityStatus}</p>
+        <h3>{activity.title}</h3><p>{volunteerTypeLabels[activity.type] || activity.type} · {activityStatus}</p>
         <p>모집: {activity.recruitmentOpen ? "모집 중" : "모집 중지 / 시작 전"} · 배정 {assignments.length}/{activity.capacity}명</p>
         <details><summary>봉사활동 상세 / 모집·배정</summary>
           <dl>{[["활동 내용", activity.description], ["활동 대상", activity.target],

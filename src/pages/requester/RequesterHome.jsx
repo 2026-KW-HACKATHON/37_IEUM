@@ -161,6 +161,7 @@ export default function RequesterHome({
   requesterType = "self",
   profile,
   requests: savedRequests,
+  syncError,
   onSubmitRequest,
   onOpenFile,
   onLogout,
@@ -239,6 +240,7 @@ export default function RequesterHome({
         <>
           <Header onLogout={onLogout} />
           <main className="rq-main">
+            {syncError && <p className="rq-alert" role="alert">{syncError}</p>}
             <section className="rq-hero">
               <h2>{requesterType === "family"
                 ? <>어르신께 필요한 도움을<br />대신 요청해 드려요</>
@@ -289,6 +291,7 @@ export default function RequesterHome({
             ? simpleMode ? "도움 내용 고치기" : "요청 수정"
             : simpleMode ? "도움받기 신청" : "도움 요청하기"} onBack={() => (step > (simpleMode ? 2 : 1) && !editingId ? setStep(step - 1) : setView(editingId ? "detail" : "home"))} onLogout={onLogout} />
           <main className="rq-main">
+            {syncError && <p className="rq-alert" role="alert">{syncError}</p>}
             {submitError && <p className="rq-alert" role="alert">{submitError}</p>}
             <div className="rq-progress" aria-label={`${simpleMode ? step - 1 : step}/${simpleMode ? 3 : 4} 단계`}>
               {(simpleMode ? [2, 3, 4] : [1, 2, 3, 4]).map((n) => <i key={n} className={n <= step ? "on" : ""} />)}
@@ -396,6 +399,7 @@ export default function RequesterHome({
           <>
             <Header title={simpleMode ? "내가 부탁한 도움" : "내 의뢰"} onBack={() => setView("home")} onLogout={onLogout} />
             <main className="rq-main">
+              {syncError && <p className="rq-alert" role="alert">{syncError}</p>}
               <div className="rq-detail-head">
                 <span className="type">{typeLabel(selected.type)}</span>
                 <h2>{selected.title}</h2>

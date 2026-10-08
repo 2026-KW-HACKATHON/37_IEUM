@@ -47,7 +47,7 @@ const ADMIN_CSS = `
 @media(min-width:600px){.ieum-admin{box-shadow:0 0 48px #172B3A12}}
 `;
 
-function AdminDashboard({ data, users, onCommand, onVerificationChange, onAddressVerificationChange, onOpenFile, onManageUser, onLoadUserManagementAudit, userStorageError, storageError, onLogout }) {
+function AdminDashboard({ data, users, profile, onCommand, onVerificationChange, onAddressVerificationChange, onOpenFile, onManageUser, onLoadUserManagementAudit, userStorageError, storageError, syncError, onLogout }) {
   const [view, setView] = useState("dashboard");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -67,11 +67,12 @@ function AdminDashboard({ data, users, onCommand, onVerificationChange, onAddres
   const pending = data.assignments.filter((item) => ["결과물 제출", "검토 중", "재제출"].includes(item.status)).length;
   return <div className="rq-app ieum-admin">
     <style>{ADMIN_CSS}</style>
-    <header className="rq-header"><span className="rq-logo">이음</span><strong>운영자</strong>{onLogout && <button className="rq-logout" onClick={onLogout}>로그아웃</button>}</header>
+    <header className="rq-header"><span className="rq-logo">이음</span><strong>운영자</strong>{profile?.name && <span className="rq-user-name">{profile.name}님</span>}{onLogout && <button className="rq-logout" onClick={onLogout}>로그아웃</button>}</header>
     <main>
       <nav aria-label="운영자 메뉴">{menus.map(([key, label]) => <button key={key} type="button" aria-pressed={view === key} onClick={() => { setView(key); setMessage(""); setError(""); }}>{label}</button>)}</nav>
       <p>의뢰·봉사활동·학생 신청·결과물·사용자 검증을 한 곳에서 확인하고 처리합니다.</p>
       {storageError && <p role="alert">{storageError}</p>}
+      {syncError && <p role="alert">{syncError}</p>}
       {error && <p role="alert">{error}</p>}
       {message && <p role="status">{message}</p>}
       {view === "dashboard" && <section>

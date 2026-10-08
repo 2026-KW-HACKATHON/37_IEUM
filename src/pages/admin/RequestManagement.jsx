@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { requestStatuses, volunteerTypes } from "../../data/noncontact";
+import { requestStatuses, volunteerTypes, volunteerTypeLabels } from "../../data/noncontact";
 
 function RequestManagement({ data, users, onCommand, disabled }) {
   const [filter, setFilter] = useState("전체");
@@ -28,7 +28,7 @@ function RequestManagement({ data, users, onCommand, disabled }) {
       const start = request.period.split(" ~ ")[0] || "";
       const end = request.period.split(" ~ ")[1] || "";
       return <article key={request.id}>
-        <h3>{request.title}</h3><p>{request.type} · {request.status}</p>
+        <h3>{request.title}</h3><p>{volunteerTypeLabels[request.type] || request.type} · {request.status}</p>
         <details><summary>의뢰 상세 / 검토</summary>
           <dl><dt>의뢰자</dt><dd>{requester?.name || request.requesterId}</dd>
             <dt>연락처</dt><dd>{requester?.phone || "미등록"}</dd>
@@ -56,7 +56,7 @@ function RequestManagement({ data, users, onCommand, disabled }) {
             <h4>봉사활동 등록</h4>
             <p>등록 후 봉사활동 관리에서 모집을 시작해주세요.</p>
             <div><label htmlFor={`title-${request.id}`}>봉사활동 제목 </label><input id={`title-${request.id}`} name="title" defaultValue={request.title} required disabled={disabled} /></div>
-            <div><label htmlFor={`type-${request.id}`}>봉사 유형 </label><select id={`type-${request.id}`} name="type" defaultValue={request.type} disabled={disabled}>{volunteerTypes.map((value) => <option key={value}>{value}</option>)}</select></div>
+            <div><label htmlFor={`type-${request.id}`}>봉사 유형 </label><select id={`type-${request.id}`} name="type" defaultValue={request.type} disabled={disabled}>{volunteerTypes.map((value) => <option key={value} value={value}>{volunteerTypeLabels[value] || value}</option>)}</select></div>
             {[["description", "활동 내용", request.description], ["target", "활동 대상", "어르신"], ["requirements", "필요한 역량", ""],
               ["resultType", "제출 결과물", request.desiredResult], ["evidence", "필수 증빙자료", ""], ["recognitionCriteria", "활동 인정 기준", ""]].map(([name, label, value]) => <div key={name}>
               <label htmlFor={`${name}-${request.id}`}>{label} </label><textarea id={`${name}-${request.id}`} name={name} defaultValue={value} required disabled={disabled} />

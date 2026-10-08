@@ -3,6 +3,7 @@ const styles = `
 .verification-gate *{box-sizing:border-box}
 .verification-gate header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid #DDE5EA}
 .verification-gate .logo{font-size:22px;font-weight:800;color:#0F7B8A}
+.verification-gate .user-name{margin-left:auto;margin-right:12px;color:#5B6B77;font-size:14px;white-space:nowrap}
 .verification-gate button{border:0;background:transparent;color:#5B6B77;font:inherit;cursor:pointer}
 .verification-gate main{width:calc(100% - 32px);max-width:480px;flex:1;margin:clamp(24px,8vh,72px) auto}
 .verification-gate section{padding:clamp(20px,6vw,28px);border:1px solid #E3E8E4;border-radius:28px;background:#fff;box-shadow:0 12px 28px #25404A0A}
@@ -22,6 +23,7 @@ export default function VerificationPending({ profile, onLogout }) {
       <style>{styles}</style>
       <header>
         <span className="logo">이음</span>
+        {profile.name && <span className="user-name">{profile.name}님</span>}
         {onLogout && <button type="button" onClick={onLogout}>로그아웃</button>}
       </header>
       <main>

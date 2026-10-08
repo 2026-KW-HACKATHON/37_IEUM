@@ -8,7 +8,7 @@ import { createPasswordCredential, normalizePhone, phoneLoginEmail, verifyPasswo
 import { readUserState, reviewStudent, reviewRequesterAddress, saveUsers } from "./data/userVerification";
 import { editLocalUser, deleteLocalUser } from "./data/userManagement";
 import { getStudentSummary } from "./data/studentSummary";
-import { readNoncontactState, saveNoncontactState, reviewRequest, registerVolunteerActivity,
+import { noncontactStorageKey, readNoncontactState, saveNoncontactState, reviewRequest, registerVolunteerActivity,
   setRecruitment, assignVolunteer, releaseAssignment, saveGuidance, getAssignmentStatus,
   beginResultReview, reviewVolunteerResult, certifyVolunteerResult, submitVolunteerResult,
   submitRequesterRequest as createRequesterRequest, reviseRequesterRequest, applyToActivity } from "./data/noncontactStore";
@@ -43,6 +43,7 @@ function App() {
   const [verificationUploadError, setVerificationUploadError] = useState("");
   const [appReady, setAppReady] = useState(!isSupabaseConfigured);
   const [startupError, setStartupError] = useState("");
+  const [syncError, setSyncError] = useState("");
   const [userState, setUserState] = useState(() => {
     if (isSupabaseConfigured) return { users: [], storageError: "" };
     try { return readUserState(window.localStorage); }
@@ -88,6 +89,7 @@ function App() {
         setCurrentUser(null);
         setUserState({ users: [], storageError: "" });
         setOperationState({ data: emptyNoncontactState, storageError: "" });
+        setSyncError("");
       }
     });
     return () => {
@@ -95,6 +97,54 @@ function App() {
       authListener.subscription.unsubscribe();
     };
   }, []);
+  useEffect(() => {
+    if (!currentUser || !isProfileApproved(currentUser)) return undefined;
+    if (!isSupabaseConfigured) {
+      const handleStorage = (event) => {
+        if (event.key !== null && event.key !== noncontactStorageKey) return;
+        const next = readNoncontactState(window.localStorage);
+        setOperationState(next);
+        setSyncError(next.storageError);
+      };
+      window.addEventListener("storage", handleStorage);
+      return () => window.removeEventListener("storage", handleStorage);
+    }
+
+    let active = true;
+    let refreshTimer;
+    const refresh = async () => {
+      try {
+        const data = await fetchNoncontactState(currentUser);
+        if (!active) return;
+        setOperationState({ data, storageError: "" });
+        setSyncError("");
+      } catch (failure) {
+        if (active) setSyncError(failure instanceof Error ? failure.message : "최신 운영 정보를 불러오지 못했습니다.");
+      }
+    };
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => { void refresh(); }, 100);
+    };
+    const channel = supabase.channel(`ieum-operations:${currentUser.id}`);
+    for (const table of ["requests", "activities", "applications", "assignments"]) {
+      channel.on("postgres_changes", { event: "*", schema: "public", table }, scheduleRefresh);
+    }
+    channel.subscribe((status) => {
+      if (!active) return;
+      if (status === "SUBSCRIBED") {
+        setSyncError("");
+        scheduleRefresh();
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        setSyncError("실시간 업데이트 연결이 끊겼습니다. 연결을 확인한 뒤 새로고침해 주세요.");
+      }
+    });
+    return () => {
+      active = false;
+      window.clearTimeout(refreshTimer);
+      void supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
   async function registerUser(profile, password, verificationDocument) {
     if (isSupabaseConfigured) {
       const { data, error } = await supabase.auth.signUp({
@@ -480,12 +530,12 @@ function App() {
     onLogin={loginUser}
     onRegister={registerUser}
   />;
-  if (currentUser?.role === "admin") return <AdminDashboard data={operationState.data} users={userState.users}
+  if (currentUser?.role === "admin") return <AdminDashboard data={operationState.data} users={userState.users} profile={currentUser}
     onManageUser={manageUser} onLoadUserManagementAudit={loadUserManagementAudit}
     onCommand={updateOperation} onVerificationChange={updateUserVerification}
     onAddressVerificationChange={updateRequesterAddress}
     onOpenFile={openPrivateFile}
-    userStorageError={userState.storageError} storageError={operationState.storageError}
+    userStorageError={userState.storageError} storageError={operationState.storageError} syncError={syncError}
     onLogout={() => isSupabaseConfigured ? supabase.auth.signOut() : setCurrentUser(null)} />;
   if (studentProfile && studentProfile.verificationStatus !== "approved") return <VerificationPending
     profile={studentProfile}
@@ -511,6 +561,7 @@ function App() {
     onOpenFile={openPrivateFile}
     onSubmitVerification={submitStudentVerification}
     verificationUploadError={verificationUploadError}
+    syncError={syncError}
     allowFileUpload={isSupabaseConfigured}
     onLogout={() => isSupabaseConfigured ? supabase.auth.signOut() : setCurrentUser(null)}
   />;
@@ -518,6 +569,7 @@ function App() {
     requesterType={currentUser.requesterType}
     profile={currentUser}
     requests={requesterRequests}
+    syncError={syncError}
     onSubmitRequest={handleRequesterSubmit}
     onOpenFile={openPrivateFile}
     onLogout={() => isSupabaseConfigured ? supabase.auth.signOut() : setCurrentUser(null)}

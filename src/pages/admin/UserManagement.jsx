@@ -33,6 +33,7 @@ function MemberEdit({ user, blocked, disabled, onManage }) {
 }
 
 function getUserType(user) {
+  if (user.role === "admin") return "운영자";
   if (user.role === "student") return "대학생";
   if (user.role === "requester" && user.requesterType === "self") return "어르신 본인";
   if (user.role === "requester" && user.requesterType === "family") return "어르신 가족";
@@ -112,7 +113,7 @@ function UserManagement({ users, data, onManageUser, onLoadAudit, operationStora
     if (verificationFilter !== "all" &&
       (user.role !== "student" || user.verificationStatus !== verificationFilter)) return false;
     if (userFilter === "all") return true;
-    if (userFilter === "student" || userFilter === "requester") return user.role === userFilter;
+    if (["student", "requester", "admin"].includes(userFilter)) return user.role === userFilter;
     return user.role === "requester" && user.requesterType === userFilter;
   });
 
@@ -137,6 +138,7 @@ function UserManagement({ users, data, onManageUser, onLoadAudit, operationStora
         }}
       >
         <option value="all">전체</option>
+        <option value="admin">운영자</option>
         <option value="student">대학생</option>
         <option value="requester">어르신 / 가족 전체</option>
         <option value="self">어르신 본인</option>

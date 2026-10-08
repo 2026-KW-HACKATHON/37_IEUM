@@ -97,16 +97,25 @@ export async function saveProfile(profile) {
   if (error) throw new Error(error.message || "프로필을 저장하지 못했습니다.");
 }
 
-export async function fetchNoncontactState() {
-  const [requestsResult, activitiesResult, applicationsResult, assignmentsResult] = await Promise.all([
+export async function fetchNoncontactState(profile) {
+  let revision;
+  let results;
+  if (profile?.role === "admin") {
+    const { data, error } = await supabase.rpc("read_ieum_admin_state");
+    if (error) throw new Error("운영 정보를 불러오지 못했습니다. DB 마이그레이션 적용 여부를 확인해주세요.");
+    revision = data.revision;
+    results = ["requests", "activities", "applications", "assignments"].map((key) => ({ data: data[key], error: null }));
+  } else results = await Promise.all([
     supabase.from("requests").select("id,requester_id,status,data"),
     supabase.from("activities").select("id,request_id,status,recruitment_open,capacity,data"),
     supabase.from("applications").select("id,activity_id,student_id,applied_at,data"),
     supabase.from("assignments").select("id,activity_id,student_id,status,data"),
   ]);
+  const [requestsResult, activitiesResult, applicationsResult, assignmentsResult] = results;
   [requestsResult, activitiesResult, applicationsResult, assignmentsResult].forEach(throwIfError);
 
   return {
+    ...(revision ? { revision } : {}),
     requests: requestsResult.data.map(({ data }) => data),
     activities: activitiesResult.data.map(({ data, ...row }) => ({
       ...data,
@@ -154,12 +163,13 @@ function activityRow(activity) {
 }
 
 function applicationRow(application) {
+  const { id, activityId, studentId, appliedAt, ...data } = application;
   return {
-    id: application.id,
-    activity_id: application.activityId,
-    student_id: application.studentId,
-    applied_at: application.appliedAt,
-    data: { isDemo: false },
+    id,
+    activity_id: activityId,
+    student_id: studentId,
+    applied_at: appliedAt,
+    data: { ...data, isDemo: false },
   };
 }
 
@@ -173,15 +183,21 @@ function assignmentRow(assignment) {
   };
 }
 
-export async function persistAdminState(state) {
-  const { error } = await supabase.rpc("admin_replace_ieum_state", {
+export async function persistAdminState(state, expectedRevision) {
+  if (!expectedRevision) throw new Error("저장할 데이터 버전이 없습니다. 새로고침 후 다시 작업해주세요.");
+  const { error } = await supabase.rpc("save_ieum_admin_state", {
+    p_expected_revision: expectedRevision,
     p_requests: state.requests.filter((item) => !item.isDemo).map(requestRow),
     p_activities: state.activities.filter((item) => !item.isDemo).map(activityRow),
     p_applications: state.applications.filter((item) => !item.isDemo).map(applicationRow),
     p_assignments: state.assignments.filter((item) => !item.isDemo).map(assignmentRow),
   });
   if (error) {
-    throw new Error(error.message || "운영 변경사항을 원자적으로 저장하지 못했습니다.");
+    const failure = new Error(error.code === "40001"
+      ? "다른 사용자의 변경 또는 처리 중인 작업이 감지됐습니다. 최신 정보를 확인하고 잠시 후 다시 저장해주세요."
+      : error.message || "운영 변경사항을 저장하지 못했습니다.");
+    failure.code = error.code;
+    throw failure;
   }
 }
 

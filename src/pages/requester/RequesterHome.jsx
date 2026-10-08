@@ -196,7 +196,7 @@ export default function RequesterHome({
       who: requesterType === "family" ? "가족" : "본인",
     });
     setEditingId(null);
-    setStep(1);
+    setStep(requesterType === "self" ? 2 : 1);
     setView("form");
   };
   const startEdit = (r) => { setForm({ ...EMPTY_FORM, ...r }); setEditingId(r.id); setStep(3); setView("form"); };
@@ -282,11 +282,11 @@ export default function RequesterHome({
         <>
           <Header title={editingId
             ? simpleMode ? "도움 내용 고치기" : "요청 수정"
-            : simpleMode ? "도움받기 신청" : "도움 요청하기"} onBack={() => (step > 1 && !editingId ? setStep(step - 1) : setView(editingId ? "detail" : "home"))} onLogout={onLogout} />
+            : simpleMode ? "도움받기 신청" : "도움 요청하기"} onBack={() => (step > (simpleMode ? 2 : 1) && !editingId ? setStep(step - 1) : setView(editingId ? "detail" : "home"))} onLogout={onLogout} />
           <main className="rq-main">
             {submitError && <p className="rq-alert" role="alert">{submitError}</p>}
-            <div className="rq-progress" aria-label={`${step}/4 단계`}>
-              {[1, 2, 3, 4].map((n) => <i key={n} className={n <= step ? "on" : ""} />)}
+            <div className="rq-progress" aria-label={`${simpleMode ? step - 1 : step}/${simpleMode ? 3 : 4} 단계`}>
+              {(simpleMode ? [2, 3, 4] : [1, 2, 3, 4]).map((n) => <i key={n} className={n <= step ? "on" : ""} />)}
             </div>
 
             {step === 1 && (

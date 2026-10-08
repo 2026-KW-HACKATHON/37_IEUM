@@ -13,7 +13,7 @@ import { volunteerTypes } from "../../data/noncontact";
 
 // 배정 후 상태 (noncontactStore 의 공통 상태명). 화면에서 "봉사자 배정"은 "배정 완료"로 표시합니다.
 const LABEL = { "봉사자 배정": "배정 완료" };
-const TONE = { "모집 중": "ing", "신청 완료": "ing", "봉사자 배정": "ing", "진행 중": "ing", "결과물 제출": "wait", "검토 중": "wait", "재제출": "wait", "보완 요청": "warn", "승인": "done", "인증 완료": "done" };
+const TONE = { "모집 중": "ing", "신청 완료": "ing", "봉사자 배정": "ing", "진행 중": "ing", "결과물 제출": "wait", "검토 중": "wait", "재제출": "wait", "반려됨": "warn", "보완 요청": "warn", "승인": "done", "인증 완료": "done" };
 const CAN_SUBMIT = ["진행 중", "보완 요청"];
 const DOING = ["진행 중", "결과물 제출", "검토 중", "보완 요청", "재제출", "승인"];
 const GROUPS = [
@@ -24,9 +24,14 @@ const GROUPS = [
 ];
 const GUIDE = [["method", "활동 방법"], ["precautions", "주의사항"], ["resultFormat", "결과물 형식"], ["evidenceGuide", "증빙 방법"], ["logGuide", "활동일지 작성 방법"]];
 
-const myStatus = (a) => (a.assignmentId ? a.status : a.applied ? "신청 완료" : "");
+const myStatus = (a) => {
+  if (a.assignmentId) return a.status;
+  if (!a.applied) return "";
+  return a.applicationStatus === "반려됨" ? "반려됨" : "신청 완료";
+};
 const statusMessage = (a) => ({
   "신청 완료": "신청이 완료되었어요. 운영자 배정 전입니다.",
+  "반려됨": "신청이 반려되었어요.",
   "봉사자 배정": `배정이 완료되었어요.${a.startDate ? ` ${a.startDate}부터` : " 활동 시작일부터"} 결과물을 제출할 수 있어요.`,
   "진행 중": `활동을 진행하고 결과물을 제출해 주세요.${a.deadline ? ` 제출 기한은 ${a.deadline}이에요.` : ""}`,
   "결과물 제출": "제출이 완료되었어요. 운영자 검토를 기다려 주세요.",

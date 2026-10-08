@@ -26,6 +26,10 @@ function isProfileApproved(profile) {
   return profile.role === "admin";
 }
 
+function studentApplicationStatus(activity) {
+  return !activity.recruitmentOpen && activity.status !== "취소" ? "반려됨" : "운영자 배정 대기";
+}
+
 function RouteNotice({ adminRoute, onLogout }) {
   return (
     <main style={{ maxWidth: 480, minHeight: "100vh", margin: "0 auto", padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16, color: "#25404A", background: "#FFF9F4" }}>
@@ -404,7 +408,7 @@ function App() {
         !assignments.some((assignment) => assignment.activityId === application.activityId))
       .map((application) => {
         const activity = data.activities.find((item) => item.id === application.activityId);
-        return activity && { ...activity, applicationStatus: "운영자 배정 대기" };
+        return activity && { ...activity, applicationStatus: studentApplicationStatus(activity) };
       }).filter(Boolean);
     const activities = data.activities.map((activity) => {
       const request = data.requests.find((item) => item.id === activity.requestId);
@@ -417,7 +421,7 @@ function App() {
         status: assignment ? getAssignmentStatus(assignment, activity) : activity.status,
         target: request?.target || activity.target,
         applied: Boolean(application),
-        applicationStatus: application ? "운영자 배정 대기" : "",
+        applicationStatus: application ? studentApplicationStatus(activity) : "",
         assignmentId: assignment?.id,
         assignmentStatus: assignment?.status || "",
         submissions: assignment?.submissions || [],

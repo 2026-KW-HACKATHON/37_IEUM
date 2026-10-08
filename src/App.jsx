@@ -402,8 +402,10 @@ function App() {
       const status = request.status === "수정 요청" || request.status === "반려"
         ? request.status
         : activity?.status === "인증 완료" ? "인증 완료"
-          : activity?.recruitmentOpen ? "모집 중"
-            : activity?.status || request.status;
+          : activity && activity.status !== "모집 중" ? activity.status
+            : activity?.recruitmentOpen ? "모집 중"
+              : activity || request.status === "승인" ? "운영자 검토"
+                : request.status;
       return {
         id: request.id,
         title: request.title,

@@ -25,6 +25,8 @@ const CSS = `
 .rq-entry-card{width:100%;min-height:76px;padding:16px;text-align:left;border:2px solid var(--line);border-radius:22px;background:var(--card);font-weight:700;font-size:18px;box-shadow:0 5px 16px #25404A08}
 .rq-entry-card.on{border-color:var(--brand);background:var(--brand-soft)}
 .rq-entry-card span{display:block;color:var(--sub);font-size:14px;font-weight:400}
+.rq-role-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border:1px solid var(--brand);border-radius:16px;background:var(--brand-soft);font-weight:700}
+.rq-role-summary button{border:0;background:transparent;color:var(--brand);font-weight:700;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
 .rq-field{display:flex;flex-direction:column;gap:8px;font-weight:600}
 .rq-field input{width:100%;font:inherit;border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:var(--card);font-weight:400}
 .rq-field select{width:100%;font:inherit;border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:var(--card);font-weight:400}
@@ -56,6 +58,7 @@ const CSS = `
 export default function LoginHome({ onLogin, onRegister, onAdminLogin, startupError, localMode, adminOnly = false }) {
   const [mode, setMode] = useState(adminOnly ? "login" : "welcome");
   const [role, setRole] = useState("");
+  const [isChangingRole, setIsChangingRole] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [adminId, setAdminId] = useState("");
@@ -145,14 +148,21 @@ export default function LoginHome({ onLogin, onRegister, onAdminLogin, startupEr
               <p>{mode === "signup" ? "함께할 유형을 선택하고 필요한 정보를 입력해 주세요." : adminOnly ? "운영자 아이디와 비밀번호를 입력해 주세요." : "가입한 휴대전화 번호와 비밀번호를 입력해 주세요."}</p>
             </section>
 
-            {mode === "signup" && <div className="rq-entry-options" role="group" aria-label="회원 유형">
+            {mode === "signup" && role && !isChangingRole && (
+              <div className="rq-role-summary">
+                <span>{roles.find((item) => item.value === role)?.label}</span>
+                <button type="button" onClick={() => setIsChangingRole(true)}>유형 변경</button>
+              </div>
+            )}
+
+            {mode === "signup" && (!role || isChangingRole) && <div className="rq-entry-options" role="group" aria-label="회원 유형">
               {roles.map((item) => (
                 <button
                   className={`rq-entry-card${role === item.value ? " on" : ""}`}
                   type="button"
                   key={item.value}
                   aria-pressed={role === item.value}
-                  onClick={() => { setRole(item.value); setError(""); }}
+                  onClick={() => { setRole(item.value); setIsChangingRole(false); setError(""); }}
                 >
                   {item.label}
                   <span>{item.description}</span>

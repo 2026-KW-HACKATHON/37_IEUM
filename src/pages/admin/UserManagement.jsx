@@ -1,5 +1,36 @@
 import { useState } from "react";
 import { verificationStatuses } from "../../data/userVerification";
+import { localPhone, deletionBlockReason } from "../../data/userManagement";
+
+function MemberEdit({ user, blocked, disabled, onManage }) {
+  const [deleting, setDeleting] = useState(false);
+  return <>
+    <form onSubmit={(event) => onManage(event, "update", user)}>
+      <h4>기본정보 수정</h4>
+      <label htmlFor={`member-name-${user.id}`}>이름</label>
+      <input id={`member-name-${user.id}`} name="name" defaultValue={user.name} maxLength={50} required disabled={disabled} />
+      <label htmlFor={`member-phone-${user.id}`}>전화번호</label>
+      <input id={`member-phone-${user.id}`} name="phone" type="tel" defaultValue={localPhone(user.phone)} maxLength={15} required disabled={disabled} />
+      <p>번호를 바꾸면 다음 로그인부터 새 번호를 사용합니다. 비밀번호는 유지됩니다. 회원의 요청이나 입력 오류를 확인한 뒤 수정해주세요.</p>
+      <label htmlFor={`member-reason-${user.id}`}>수정 사유</label>
+      <textarea id={`member-reason-${user.id}`} name="reason" maxLength={500} required disabled={disabled} />
+      <button disabled={disabled}>기본정보 저장</button>
+    </form>
+    <h4>회원 삭제</h4>
+    <p>로그인 계정·회원 기본정보·회원이 업로드한 파일을 삭제합니다. 되돌릴 수 없습니다. 요청·신청·배정 또는 가족 연결 기록이 있으면 삭제할 수 없습니다.</p>
+    {blocked && <p>{blocked}</p>}
+    {!deleting ? <button type="button" disabled={disabled || Boolean(blocked)} onClick={() => setDeleting(true)}>회원 삭제 확인</button>
+      : <form onSubmit={(event) => onManage(event, "delete", user)}>
+        <p>삭제 대상: {user.name} · {localPhone(user.phone)}. 계속하려면 회원 이름을 정확히 입력해주세요.</p>
+        <label htmlFor={`delete-name-${user.id}`}>삭제할 회원 이름</label>
+        <input id={`delete-name-${user.id}`} name="confirmName" autoComplete="off" required disabled={disabled} />
+        <label htmlFor={`delete-reason-${user.id}`}>삭제 사유</label>
+        <textarea id={`delete-reason-${user.id}`} name="reason" maxLength={500} required disabled={disabled} />
+        <button disabled={disabled || Boolean(blocked)}>회원 영구 삭제</button>
+        <button type="button" disabled={disabled} onClick={() => setDeleting(false)}>취소</button>
+      </form>}
+  </>;
+}
 
 function getUserType(user) {
   if (user.role === "student") return "대학생";
@@ -9,7 +40,9 @@ function getUserType(user) {
   return "역할 확인 필요";
 }
 
-function UserManagement({ users, onVerificationChange, onAddressVerificationChange, onOpenFile, storageError }) {
+function UserManagement({ users, data, onManageUser, onLoadAudit, operationStorageError, onVerificationChange, onAddressVerificationChange, onOpenFile, storageError }) {
+  const [busy, setBusy] = useState(false);
+  const [audit, setAudit] = useState(null);
   const [userFilter, setUserFilter] = useState("all");
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [verificationFilter, setVerificationFilter] = useState("all");
@@ -17,6 +50,27 @@ function UserManagement({ users, onVerificationChange, onAddressVerificationChan
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  async function manage(event, action, user) {
+    event.preventDefault();
+    if (busy) return;
+    const fields = Object.fromEntries(new FormData(event.currentTarget));
+    setBusy(true); setMessage(""); setErrorMessage("");
+    try {
+      const result = await onManageUser(action, user.id, fields);
+      setMessage(result?.warning || (action === "delete" ? "회원이 삭제됐습니다." : "기본정보가 수정됐습니다."));
+      setAudit(null);
+      if (action === "delete") setSelectedUserId(null);
+    } catch (failure) { setErrorMessage(failure.message); }
+    finally { setBusy(false); }
+  }
+
+  async function loadAudit() {
+    setBusy(true); setErrorMessage("");
+    try { setAudit(await onLoadAudit()); }
+    catch (failure) { setErrorMessage(failure.message); }
+    finally { setBusy(false); }
+  }
 
   function resetDetails(userId = null) {
     setSelectedUserId(userId);
@@ -103,6 +157,15 @@ function UserManagement({ users, onVerificationChange, onAddressVerificationChan
       {storageError && <p role="alert">{storageError}</p>}
       {errorMessage && <p role="alert">{errorMessage}</p>}
       {message && <p role="status">{message}</p>}
+      {onLoadAudit && <button type="button" disabled={busy} onClick={loadAudit}>최근 회원 처리 이력 조회</button>}
+      {audit && <section><h3>최근 수정·삭제 이력 (최대 100건)</h3>
+        {!audit.length && <p>처리 이력이 없습니다.</p>}
+        <ul>{audit.map((entry) => <li key={entry.id}>
+          {entry.action === "delete" ? "회원 삭제" : "기본정보 수정"} · {({ pending: "처리 중 / 확인 필요", completed: "완료", failed: "실패" })[entry.status]}
+          <p>대상 ID: {entry.target_id} · 운영자 ID: {entry.actor_id}</p>
+          <p>{entry.reason} · {new Date(entry.created_at).toLocaleString("ko-KR")}</p>
+        </li>)}</ul>
+      </section>}
 
       {filteredUsers.length === 0 ? (
         <p>{users.length === 0 ? "등록된 사용자가 없습니다." : "선택한 유형의 사용자가 없습니다."}</p>
@@ -136,6 +199,7 @@ function UserManagement({ users, onVerificationChange, onAddressVerificationChan
                   <dd>{user.id}</dd>
                   <dt>이름</dt>
                   <dd>{user.name}</dd>
+                  <dt>전화번호</dt><dd>{localPhone(user.phone) || "미등록"}</dd>
                   <dt>사용자 유형</dt>
                   <dd>{getUserType(user)}</dd>
                   <dt>가입일</dt>
@@ -169,6 +233,10 @@ function UserManagement({ users, onVerificationChange, onAddressVerificationChan
                     </>
                   )}
                 </dl>
+                {onManageUser && ["student", "requester"].includes(user.role) && <MemberEdit
+                  key={`${user.id}-${user.name}-${user.phone}`} user={user} onManage={manage}
+                  disabled={busy || Boolean(storageError)}
+                  blocked={operationStorageError || deletionBlockReason(user.id, data, users)} />}
                 {user.role === "requester" && user.addressVerificationStatus === "pending" && (
                   <form onSubmit={(event) => handleAddressVerification(event, user)}>
                     <h4>주소 확인 처리</h4>

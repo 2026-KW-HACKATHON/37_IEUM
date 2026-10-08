@@ -1,0 +1,3 @@
+[functions.admin-user-management]
+# handler.js에서 JWT를 검증하고 DB의 admin 역할을 확인합니다.
+verify_jwt = false

@@ -127,7 +127,7 @@ export default function LoginHome({ onLogin, onRegister, onAdminLogin, startupEr
       <style>{CSS}</style>
       <header className="rq-header">
         {mode !== "welcome" && !adminOnly && <button className="rq-back" type="button" onClick={() => { setMode("welcome"); setError(""); }} aria-label="처음으로 돌아가기">‹</button>}
-        <span className="rq-logo">이음</span>
+        <span className="rq-logo">월계이음</span>
       </header>
 
       <main className="rq-main">
